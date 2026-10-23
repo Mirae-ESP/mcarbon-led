@@ -26,7 +26,13 @@ app.use(helmet({
 }));
 app.use(compression());
 app.use(express.json({ limit: "100kb" }));
-app.use(express.static(path.join(__dirname, "..", "public"), { maxAge: "1h" }));
+// 화면 파일(html·js·css)은 매번 최신 버전 확인, 이미지만 1시간 캐시
+app.use(express.static(path.join(__dirname, "..", "public"), {
+  setHeaders(res, file) {
+    if (/\.(html|js|css)$/.test(file)) res.setHeader("Cache-Control", "no-cache");
+    else res.setHeader("Cache-Control", "public, max-age=3600");
+  },
+}));
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 const summaryOf = (v) => {
