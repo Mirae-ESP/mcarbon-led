@@ -1,6 +1,6 @@
 // 절감 산출 엑셀 생성
 // 보내주신 INPUT_DATA.xlsx 원본을 그대로 열어 입력칸 값만 바꿉니다.
-// 배치·서식·문구·수식·고정값은 원본과 동일하고, 현장 입력칸(B2·B3·B4·B5·B8·B13)만 채웁니다.
+// 배치·서식·문구·수식·고정값은 원본과 동일하고, 입력칸(B2·B3·B4·B5·B8·B13·B14)만 채웁니다.
 const path = require("path");
 const ExcelJS = require("exceljs");
 const JSZip = require("jszip");
@@ -24,6 +24,7 @@ async function buildExcel(v) {
   val("B5", v.qty);
   val("B8", v.price);
   val("B13", v.effOld);
+  val("B14", v.effNew);   // M-Carbon 등 효율 (웹 입력)
 
   // ---- 원본 수식 그대로 (계산값을 함께 넣어 미리보기에서도 보이게) ----
   fx("B6", "B3*B4*B5/1000", r.dayKw);
@@ -64,7 +65,7 @@ async function buildExcel(v) {
     res("F" + row, y.op); res("G" + row, y.acc); res("H" + row, "█".repeat(Math.round(y.apt / maxApt * 22)));
   });
   res("C24", r.saveTot); res("E24", r.aptTot); res("F24", r.opTot); res("E25", r.rep); res("E26", r.netTot);
-  res("B28", `산출 기준: 현장 입력값 — 소비전력 ${v.w}W · 일일 점등 ${v.hrs}시간 · LED ${f0(v.qty)}등 · 전기요금 ${v.price}원/kWh · 현재 등 효율 ${v.effOld}lm/W. 고정값 — M-Carbon 등 효율 180lm/W · Smart IoT 추가 절감 25% · 전기요금 연 5% 상승 · 성과공유 비율(산출 시트 H열). 상세 계산은 ‘절감 산출’ 시트 참고.`);
+  res("B28", `산출 기준: 현장 입력값 — 소비전력 ${v.w}W · 일일 점등 ${v.hrs}시간 · LED ${f0(v.qty)}등 · 전기요금 ${v.price}원/kWh · 현재 등 효율 ${v.effOld}lm/W · M-Carbon 등 효율 ${v.effNew}lm/W. 고정값 — Smart IoT 추가 절감 25% · 전기요금 연 5% 상승 · 성과공유 비율(산출 시트 H열). 상세 계산은 ‘절감 산출’ 시트 참고.`);
 
   return fixForExcel(Buffer.from(await wb.xlsx.writeBuffer()));
 }

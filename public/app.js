@@ -201,8 +201,8 @@ function fillInputs(v) {
   // 기본값과 다른 고급 설정이 있으면 펼쳐서 보이게
   render();
 }
-const REQ_KEYS = ["site", "w", "effOld", "qty", "hrs", "days", "price"];
-const SCREEN_KEYS = ["w", "effOld", "qty", "hrs", "days", "price", "efS", "tree"];
+const REQ_KEYS = ["site", "w", "effOld", "effNew", "qty", "hrs", "days", "price"];
+const SCREEN_KEYS = ["w", "effOld", "effNew", "qty", "hrs", "days", "price", "efS", "tree"];
 const filled = (k) => $(k).value.trim() !== "";
 const blankDoc = () => Object.assign(Object.fromEntries(NUM_KEYS.map((k) => [k, ""])), { site: "", to: "", date: today(), author: "", shares: Array(10).fill("") });
 const ADV_KEYS = []; // 엑셀 고정값은 묻지 않음

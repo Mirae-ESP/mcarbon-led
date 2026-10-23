@@ -206,8 +206,9 @@ const EN = {
   "빈 칸을 모두 채워주세요.": "Please fill in all the empty boxes.",
   "제안서(엑셀·PPT) 결과": "Proposal (Excel · PowerPoint) results",
   "INPUT_DATA 엑셀 수식과 고정값으로 자동 계산 · 입력 없음": "Calculated automatically from the INPUT_DATA Excel formulas and fixed values · no input needed",
-  "엑셀 고정값: M-Carbon 등 효율 180 lm/W · Smart IoT 추가 절감 25% · 전기요금 연 5% 상승 · 연간 운전일수 365일 · 추가시설비 25,000원 · 회수 계수 2 · LED 평균단가 30,000원 · 교체주기 3년 · 배출계수 0.4781 tCO₂eq/MWh": "Fixed Excel values: M-Carbon efficiency 180 lm/W · Smart IoT savings 25% · electricity price +5%/yr · 365 operating days · installation ₩25,000 · recovery factor 2 · LED unit cost ₩30,000 · replacement cycle 3 yrs · emission factor 0.4781 tCO₂eq/MWh",
+  "엑셀 고정값: Smart IoT 추가 절감 25% · 전기요금 연 5% 상승 · 연간 운전일수 365일 · 추가시설비 25,000원 · 회수 계수 2 · LED 평균단가 30,000원 · 교체주기 3년 · 배출계수 0.4781 tCO₂eq/MWh": "Fixed Excel values: Smart IoT savings 25% · electricity price +5%/yr · 365 operating days · installation ₩25,000 · recovery factor 2 · LED unit cost ₩30,000 · replacement cycle 3 yrs · emission factor 0.4781 tCO₂eq/MWh",
   "성과공유 비율 (고정)": "Profit-sharing ratios (fixed)",
+  "M-Carbon 등기구": "M-Carbon fixtures",
   // 안내·오류 문구
   "요청에 실패했습니다": "Request failed",
   "이메일 형식이 올바르지 않습니다.": "The email address is not valid.",

@@ -15,9 +15,9 @@
     shares: [20, 20, 20, 30, 30, 40, 40, 100, 100, 100], // 년차별 아파트 비율(%)
   };
   // INPUT_DATA.xlsx 에 고정(하드코딩)된 값 — 웹에서 묻지 않음
-  //  B14 M-Carbon 효율 180, B15 IoT 25%, B21 추가시설비 25,000, B22 회수 2, B41 LED 단가 30,000,
+  //  (B14 M-Carbon 효율은 웹에서 입력) B15 IoT 25%, B21 추가시설비 25,000, B22 회수 2, B41 LED 단가 30,000,
   //  H4:H13 성과공유 비율, 수식 속 365일 · 1.05(5% 상승) · 8/3(교체주기 3년), PPT 각주 배출계수 0.4781
-  const FIXED = { effNew: 180, iot: 25, esc: 5, fac: 25000, facK: 2, ledP: 30000, cyc: 3, ef: 0.4781, forest: 11,
+  const FIXED = { iot: 25, esc: 5, fac: 25000, facK: 2, ledP: 30000, cyc: 3, ef: 0.4781, forest: 11,
     shares: [20, 20, 20, 30, 30, 40, 40, 100, 100, 100], to: "입주자대표회의" };
   const EXCEL_DAYS = 365;
   // 회사 설정(관리자만 변경) — 엑셀·PPT에만 쓰이는 값
@@ -78,11 +78,10 @@
     return r;
   }
 
-  /** 화면용 산출 (원본 'LED 교체 절감효과 산출서' HTML 과 같은 식, LED 광효율 165 lm/W) */
-  const LED_EFF = 165;
+  /** 화면용 산출 (원본 'LED 교체 절감효과 산출서' HTML 과 같은 식 — LED 광효율은 입력한 M-Carbon 등 효율) */
   function computeScreen(v) {
     const base = v.qty * v.hrs * v.days / 1000;
-    const wNew = v.w * v.effOld / LED_EFF;
+    const wNew = v.effNew > 0 ? v.w * v.effOld / v.effNew : 0;
     const useOld = v.w * base, useNew = wNew * base, e = Math.max(useOld - useNew, 0);
     const m = e * v.price, c = e * v.efS, t = v.tree > 0 ? c / v.tree : 0;
     const pct = useOld > 0 ? useNew / useOld * 100 : 0;
