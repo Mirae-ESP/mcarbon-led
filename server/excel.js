@@ -3,6 +3,7 @@
 // 배치·서식·문구·수식·고정값은 원본과 동일하고, 현장 입력칸(B2·B3·B4·B5·B8·B13)만 채웁니다.
 const path = require("path");
 const ExcelJS = require("exceljs");
+const JSZip = require("jszip");
 const { compute, f0 } = require("../public/calc.js");
 
 const TEMPLATE = path.join(__dirname, "assets", "INPUT_DATA_styled.xlsx"); // 원본 INPUT_DATA 에 서식만 입히고 요약 시트를 추가한 것
@@ -65,7 +66,25 @@ async function buildExcel(v) {
   res("C24", r.saveTot); res("E24", r.aptTot); res("F24", r.opTot); res("E25", r.rep); res("E26", r.netTot);
   res("B28", `산출 기준: 현장 입력값 — 소비전력 ${v.w}W · 일일 점등 ${v.hrs}시간 · LED ${f0(v.qty)}등 · 전기요금 ${v.price}원/kWh · 현재 등 효율 ${v.effOld}lm/W. 고정값 — M-Carbon 등 효율 180lm/W · Smart IoT 추가 절감 25% · 전기요금 연 5% 상승 · 성과공유 비율(산출 시트 H열). 상세 계산은 ‘절감 산출’ 시트 참고.`);
 
-  return Buffer.from(await wb.xlsx.writeBuffer());
+  return fixForExcel(Buffer.from(await wb.xlsx.writeBuffer()));
+}
+
+// ExcelJS 가 <sheetPr> 안 요소 순서를 Excel 규격과 다르게 쓰는 문제 보정
+// (규격 순서: tabColor → outlinePr → pageSetUpPr). 순서가 틀리면 Excel 이 "문제가 있습니다" 로 열고 내용이 비어 보임.
+async function fixForExcel(buf) {
+  const zip = await JSZip.loadAsync(buf);
+  const order = ["tabColor", "outlinePr", "pageSetUpPr"];
+  for (const name of Object.keys(zip.files).filter((n) => /^xl\/worksheets\/sheet\d+\.xml$/.test(n))) {
+    const x = await zip.file(name).async("string");
+    const fixed = x.replace(/<sheetPr([^>]*)>([\s\S]*?)<\/sheetPr>/, (m, attrs, inner) => {
+      const parts = inner.match(/<(\w+)[^>]*\/>|<(\w+)[^>]*>[\s\S]*?<\/\2>/g) || [];
+      const tag = (p) => p.match(/^<(\w+)/)[1];
+      parts.sort((a, b) => order.indexOf(tag(a)) - order.indexOf(tag(b)));
+      return `<sheetPr${attrs}>${parts.join("")}</sheetPr>`;
+    });
+    zip.file(name, fixed);
+  }
+  return zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
 }
 
 module.exports = { buildExcel };
