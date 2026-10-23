@@ -2,7 +2,9 @@
 (() => {
 "use strict";
 const $ = (id) => document.getElementById(id);
-const { DEFAULTS, NUM_KEYS, normalize, compute, f0, f1, man } = window.LEDCalc;
+const { DEFAULTS, NUM_KEYS, PROPOSAL_KEYS, normalize, compute, computeScreen, f0, f1, man } = window.LEDCalc;
+let CO = null; // 회사 설정 (서버)
+const isAdmin = () => !!(me && me.role === "admin");
 const TEXT_KEYS = ["site", "to", "date", "author"];
 const T = (ko, en) => window.I18N.t(ko, en), TR = (x) => window.I18N.tr(x);
 const money = (n) => window.I18N.lang === "en" ? `${(n / 1e6).toLocaleString("en-US", { maximumFractionDigits: 1 })}<small>M KRW</small>` : `${man(n)}<small>만원</small>`;
@@ -54,11 +56,11 @@ const ERR = {
 const errText = (e) => ERR[e && e.code] || (e && e.message) || "알 수 없는 오류가 발생했습니다.";
 
 const forms = { login: $("fLogin"), signup: $("fSignup"), reset: $("fReset") };
-const titles = { login: "로그인", signup: "회원가입", reset: "비밀번호 찾기", pending: "승인 대기" };
+const titles = { login: "로그인", signup: "회원가입", reset: "비밀번호 찾기", pending: "접근 권한 없음" };
 function showAuth(v, keepMsg) {
   Object.entries(forms).forEach(([k, f]) => (f.hidden = k !== v));
   $("pendingView").hidden = v !== "pending";
-  $("tabs").hidden = v === "reset" || v === "pending";
+  $("tabs").hidden = true; // 단일 계정: 회원가입 없음
   $("tabs").querySelectorAll("button").forEach((b) => b.setAttribute("aria-selected", b.dataset.v === v));
   $("aTitle").textContent = titles[v];
   if (!keepMsg) amsg("");
@@ -151,10 +153,9 @@ async function refreshMe(showMsg) {
     }
     if (me.status === "active") return unlock();
     lock(); showAuth("pending", showMsg);
-    $("pendingText").textContent = T(`${me.name || me.email} 님, 가입이 완료되었습니다. 관리자 승인 후 사용할 수 있습니다.`, `${me.name || me.email}, your registration is complete. You can use the service after administrator approval.`);
+    $("pendingText").textContent = T("이 계정은 사용 권한이 없습니다. 등록된 마케팅 계정으로 로그인하세요.", "This account doesn't have access. Please log in with the registered marketing account.");
     const needVerify = cfg.authMode !== "dev" && !me.email_verified;
     $("verifyText").hidden = !needVerify; $("pResend").hidden = !needVerify;
-    if (showMsg) amsg("아직 승인 대기 중입니다.", false);
   })();
   try { await refreshing; } finally { refreshing = null; }
 }
@@ -168,7 +169,13 @@ function unlock() {
   amsg("");
   $("whoName").textContent = me.name || me.email;
   const admin = me.role === "admin";
-  $("whoRole").hidden = !admin; $("navAdmin").hidden = !admin; $("allWrap").hidden = !admin;
+  // 단일 계정(마케팅) 운영: 사용자 관리·권한 표시 없음, 제안서 설정은 접힌 상태로 항상 표시
+  $("whoRole").hidden = true; $("navAdmin").hidden = true; $("allWrap").hidden = true;
+  $("propset").hidden = !admin;
+  api("/api/settings").then((c) => {
+    CO = c;
+    if (!docId && !dirty) { applyProposal(CO); render(); $("adv").open = false; }
+  }).catch(() => {});
   if (!$("author").value.trim()) { $("author").value = me.name || ""; render(); }
 }
 
@@ -193,11 +200,11 @@ function fillInputs(v) {
   NUM_KEYS.forEach((k) => ($(k).value = ["qty", "fac", "ledP"].includes(k) ? f0(v[k]) : v[k]));
   $("tb").querySelectorAll("input").forEach((i, n) => (i.value = v.shares[n]));
   // 기본값과 다른 고급 설정이 있으면 펼쳐서 보이게
-  $("adv").open = ADV_KEYS.some((k) => Number(v[k]) !== Number(DEFAULTS[k]));
-  $("advShare").open = v.shares.some((x, n) => Number(x) !== DEFAULTS.shares[n]);
+  const base = CO || DEFAULTS;
+  $("adv").open = ADV_KEYS.some((k) => Number(v[k]) !== Number(base[k])) || v.shares.some((x, n) => Number(x) !== Number(base.shares[n]));
   render();
 }
-const ADV_KEYS = ["effNew", "iot", "esc", "fac", "facK", "ledP", "cyc", "ef", "tree", "forest"];
+const ADV_KEYS = ["effNew", "iot", "esc", "fac", "facK", "ledP", "cyc", "ef", "forest"];
 function setDoc(id, isDirty) {
   docId = id; dirty = isDirty;
   $("docState").textContent = id ? T(`저장된 제안서 #${id}${isDirty ? " · 수정됨 (저장 전)" : ""}`, `Saved proposal #${id}${isDirty ? " · edited (not saved)" : ""}`) : "새 제안서 (저장 전)";
@@ -205,45 +212,62 @@ function setDoc(id, isDirty) {
 function onEdit() { render(); setDoc(docId, true); }
 
 function render() {
-  const v = readInputs(), r = compute(v);
+  const v = readInputs(), r = compute(v), S = computeScreen(v);
+  const en = window.I18N.lang === "en";
   $("xSite").textContent = v.site;
-  $("cUse").textContent = f0(r.useYr) + " kWh";
-  $("cCost").textContent = T(f0(r.costYr) + " 원", "₩" + f0(r.costYr));
-  $("cInv").textContent = T(f0(r.inv) + " 원", "₩" + f0(r.inv));
-  $("cRep").textContent = T(f0(r.rep) + " 원 (" + r.repN + "회 교체)", "₩" + f0(r.rep) + " (" + r.repN + " replacements)");
-  const pct = r.ratio * 100;
-  $("gArc").style.strokeDashoffset = (314.16 * (1 - Math.min(Math.max(pct, 0), 100) / 100)).toFixed(2);
-  $("gPct").innerHTML = `${f1(pct)}<small>%</small>`;
-  $("gYrs").textContent = T(r.contract + "년", r.contract + " years");
-  $("bigN").textContent = T(`총 ${f0(r.netTot)}원 (약 ${man(r.netTot)}만 원)`, `Total ₩${f0(r.netTot)} (≈ ${moneyTxt(r.netTot)})`);
-  $("bigS").textContent = T(`전기 절감 배분수익 ${man(r.aptTot)}만 원 + 자체 시설교체 추가투자 비용 절감액 ${man(r.rep)}만 원`, `Share of electricity savings ${moneyTxt(r.aptTot)} + avoided replacement investment ${moneyTxt(r.rep)}`);
-  const W = (n, u) => `${n}<small>${u}</small>`;
-  $("e1").innerHTML = W(f0(r.saveKwh), "kWh"); $("e10").innerHTML = W(f1(r.saveKwh * 10 / 1000), "MWh");
-  $("m1").innerHTML = money(r.years[0].save); $("m10").innerHTML = money(r.saveTot);
-  $("a1").innerHTML = money(r.years[0].apt); $("a10").innerHTML = money(r.aptTot);
-  $("c1").innerHTML = W(f1(r.co2), "tCO₂"); $("c10").innerHTML = W(f1(r.co2 * 10), "tCO₂");
-  $("t1").innerHTML = W(f0(r.trees), "그루"); $("t10").innerHTML = W(f0(r.trees * 10), "그루");
-  [...$("tb").rows].forEach((tr, i) => {
-    const y = r.years[i];
-    tr.className = y.share >= 1 ? "after" : "";
-    tr.querySelector(".bar2 i").style.width = y.share * 100 + "%";
-    tr.cells[2].textContent = f0(y.save); tr.cells[3].textContent = f0(y.apt); tr.cells[4].textContent = f0(y.op); tr.cells[5].textContent = f0(y.acc);
-  });
-  $("fT").textContent = f0(r.saveTot); $("fA").textContent = f0(r.aptTot); $("fO").textContent = f0(r.opTot);
-  const Wd = 440, H = 210, L = 40, R = 8, TOP = 22, B = 24, n = 10, step = (Wd - L - R) / n, bw = step * 0.62;
-  const vals = r.years.map((y) => y.apt / 1e4), max = Math.max(...vals, 1);
+
+  // ---------- 화면 (원본 산출서 HTML 과 같은 식) ----------
+  const N = (n, u) => `<span class="n">${n}</span><small>${u}</small>`;
+  const won = (n) => en ? N((n / 1e6).toLocaleString("en-US", { maximumFractionDigits: 1 }), "M KRW")
+    : n >= 1e8 ? N(f1(n / 1e8), "억원") : n >= 1e4 ? N(f0(n / 1e4), "만원") : N(f0(n), "원");
+  const kwh = (n) => n >= 1e5 ? N(f1(n / 1000), "MWh") : N(f0(n), "kWh");
+  const co2 = (kg) => kg >= 1000 ? N(f1(kg / 1000), "tCO₂") : N(f0(kg), "kgCO₂");
+  $("e1").innerHTML = kwh(S.e); $("e10").innerHTML = kwh(S.e * 10);
+  $("m1").innerHTML = won(S.m); $("m10").innerHTML = won(S.m * 10);
+  $("c1").innerHTML = co2(S.c); $("c10").innerHTML = co2(S.c * 10);
+  $("t1").innerHTML = N(f0(S.t), "그루"); $("t10").innerHTML = N(f0(S.t * 10), "그루");
+  $("costOld").textContent = T(f0(S.costOld) + "원", "₩" + f0(S.costOld));
+  $("costOldM").textContent = T(`월 평균 ${f0(S.costOld / 12)}원`, `Monthly avg ₩${f0(S.costOld / 12)}`);
+  $("useOld").textContent = f0(S.useOld) + T(" kWh/년", " kWh/yr"); $("useNew").textContent = f0(S.useNew) + T(" kWh/년", " kWh/yr");
+  $("barOld").style.width = S.useOld > 0 ? "100%" : "0%"; $("barNew").style.width = Math.min(S.pct, 100) + "%";
+  $("gArc").style.strokeDashoffset = (314.16 * (1 - Math.min(S.rate, 100) / 100)).toFixed(2);
+  $("gPct").innerHTML = `${f1(S.rate)}<small>%</small>`;
+  $("gNew").textContent = `${f1(S.wNew)} W`;
+  $("cutPct").textContent = S.useOld > 0 ? T(`${f1(S.rate)}% 감소`, `${f1(S.rate)}% less`) : "";
+  // 연도별 누적 절감액 (백만원)
+  const W = 420, H = 210, L = 34, R = 8, TOP = 22, B = 24, n = 10, step = (W - L - R) / n, bw = step * 0.62;
+  const vals = Array.from({ length: n }, (_, i) => S.m * (i + 1) / 1e6), max = vals[n - 1] || 1;
   const nice = (x) => { const p = Math.pow(10, Math.floor(Math.log10(x))); const q = x / p; return (q <= 1 ? 1 : q <= 2 ? 2 : q <= 2.5 ? 2.5 : q <= 5 ? 5 : 10) * p; };
-  const tick = nice(max / 4), top = Math.ceil(max / tick) * tick || 1, yy = (t) => TOP + (H - TOP - B) * (1 - t / top);
+  const tick = nice(max / 4), top = Math.ceil(max / tick) * tick || 1, y = (t) => TOP + (H - TOP - B) * (1 - t / top);
+  const dec = top < 10 ? 1 : 0, fm = (t) => t.toLocaleString("ko-KR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
   let g = "";
-  for (let t = 0; t <= top + 1e-9; t += tick) g += `<line class="grid" x1="${L}" x2="${Wd - R}" y1="${yy(t)}" y2="${yy(t)}"/><text class="ax" x="${L - 6}" y="${yy(t) + 3.5}" text-anchor="end">${Math.round(t).toLocaleString("ko-KR")}</text>`;
+  for (let t = 0; t <= top + 1e-9; t += tick) g += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}"/><text class="ax" x="${L - 6}" y="${y(t) + 3.5}" text-anchor="end">${fm(t)}</text>`;
   vals.forEach((t, i) => {
-    const x = L + step * i + (step - bw) / 2, cls = r.years[i].share >= 1 ? " full" : "";
-    g += `<rect class="col${cls}" x="${x}" y="${yy(t)}" width="${bw}" height="${Math.max(yy(0) - yy(t), 0)}" rx="3"/>`;
-    g += `<text class="val" x="${x + bw / 2}" y="${yy(t) - 5}" text-anchor="middle">${Math.round(t).toLocaleString("ko-KR")}</text>`;
+    const x = L + step * i + (step - bw) / 2, hi = i === n - 1 ? " hi" : "";
+    g += `<rect class="col${hi}" x="${x}" y="${y(t)}" width="${bw}" height="${Math.max(y(0) - y(t), 0)}" rx="3"/>`;
+    g += `<text class="val${hi}" x="${x + bw / 2}" y="${y(t) - 5}" text-anchor="middle">${fm(t)}</text>`;
     g += `<text class="ax" x="${x + bw / 2}" y="${H - 7}" text-anchor="middle">${i + 1}년</text>`;
   });
   $("yrChart").innerHTML = g;
-  $("yrSub").textContent = T(`10년 합계 ${man(r.aptTot)}만원 · 밝은 막대는 계약 종료 후(100% 단지 귀속)`, `10-year total ${moneyTxt(r.aptTot)} · bright bars = after the contract ends (100% to the complex)`);
+  const m1 = (S.m / 1e6).toLocaleString("ko-KR", { maximumFractionDigits: 1 }), m10 = (S.m * 10 / 1e6).toLocaleString("ko-KR", { maximumFractionDigits: 1 });
+  $("yrSub").textContent = T(`연간 ${m1}백만원 × 10년 = 누적 ${m10}백만원`, `₩${m1}M per year × 10 years = ₩${m10}M total`);
+
+  // ---------- 제안서(엑셀·PPT) 기준 ----------
+  $("bigN").textContent = T(`총 ${f0(r.netTot)}원 (약 ${man(r.netTot)}만 원)`, `Total ₩${f0(r.netTot)} (≈ ${moneyTxt(r.netTot)})`);
+  $("bigS").textContent = T(`전기 절감 배분수익 ${man(r.aptTot)}만 원 + 자체 시설교체 추가투자 비용 절감액 ${man(r.rep)}만 원`, `Share of electricity savings ${moneyTxt(r.aptTot)} + avoided replacement investment ${moneyTxt(r.rep)}`);
+  $("pRatio").textContent = f1(r.ratio * 100) + "%";
+  $("pKwh").textContent = f0(r.saveKwh) + " kWh";
+  $("gYrs").textContent = T(r.contract + "년", r.contract + " years");
+  $("pWarn").hidden = !(r.ratio > 1); $("xWarn").hidden = !(r.ratio > 1 && isAdmin()); $("xWarnS").hidden = !(r.ratio > 1 && !isAdmin());
+  $("cInv").textContent = T(f0(r.inv) + " 원", "₩" + f0(r.inv));
+  $("cRep").textContent = T(f0(r.rep) + " 원 (" + r.repN + "회 교체)", "₩" + f0(r.rep) + " (" + r.repN + " replacements)");
+  [...$("tb").rows].forEach((tr, i) => {
+    const yv = r.years[i];
+    tr.className = yv.share >= 1 ? "after" : "";
+    tr.querySelector(".bar2 i").style.width = yv.share * 100 + "%";
+    tr.cells[2].textContent = f0(yv.save); tr.cells[3].textContent = f0(yv.apt); tr.cells[4].textContent = f0(yv.op); tr.cells[5].textContent = f0(yv.acc);
+  });
+  $("fT").textContent = f0(r.saveTot); $("fA").textContent = f0(r.aptTot); $("fO").textContent = f0(r.opTot);
 }
 
 function setStatus(t, err) { const s = $("status"); s.textContent = t; s.className = err ? "err" : ""; }
@@ -274,16 +298,29 @@ async function run(btn, label, fn) {
 $("bSave").addEventListener("click", (e) => run(e.currentTarget, "저장 중…", async () => { await save(); return "저장했습니다."; }));
 $("bXl").addEventListener("click", (e) => run(e.currentTarget, "엑셀 파일을 만드는 중…", async () => { const id = await save(); await download(id, "excel"); return "저장 후 엑셀 파일을 받았습니다."; }));
 $("bPp").addEventListener("click", (e) => run(e.currentTarget, "PPT 파일을 만드는 중… (10초 정도 걸릴 수 있습니다)", async () => { const id = await save(); await download(id, "pptx"); return "저장 후 PPT 파일을 받았습니다."; }));
-$("resetAdv").addEventListener("click", () => {
-  ADV_KEYS.forEach((k) => ($(k).value = ["fac", "ledP"].includes(k) ? f0(DEFAULTS[k]) : DEFAULTS[k]));
-  onEdit();
+function applyProposal(src) {
+  ADV_KEYS.forEach((k) => ($(k).value = ["fac", "ledP"].includes(k) ? f0(src[k]) : src[k]));
+  $("to").value = src.to;
+  $("tb").querySelectorAll("input").forEach((i, n) => (i.value = src.shares[n]));
+}
+function proposalValues() { const v = readInputs(); return Object.fromEntries(PROPOSAL_KEYS.map((k) => [k, v[k]])); }
+$("resetAdv").addEventListener("click", () => { applyProposal(CO || DEFAULTS); onEdit(); });
+$("resetXl").addEventListener("click", () => { applyProposal(DEFAULTS); onEdit(); });
+$("saveCo").addEventListener("click", async (e) => {
+  const b = e.currentTarget; b.disabled = true;
+  try {
+    CO = await api("/api/settings", { method: "PUT", json: proposalValues() });
+    $("coMsg").textContent = T("기본값을 저장했습니다. 다음 새 제안서부터 적용됩니다.", "Defaults saved. They apply to new proposals from now on.");
+  } catch (err) { $("coMsg").textContent = TR(err.message); }
+  finally { b.disabled = false; }
 });
+
 $("bNew").addEventListener("click", () => {
   if (dirty && !window.confirm(TR("저장하지 않은 내용이 있습니다. 새 제안서를 시작할까요?"))) return;
   newDoc();
 });
 function newDoc() {
-  fillInputs(Object.assign({}, DEFAULTS, { site: "", date: today(), author: (me && me.name) || "" }));
+  fillInputs(Object.assign({}, DEFAULTS, CO || {}, { site: "", date: today(), author: (me && me.name) || "" }));
   setDoc(null, false); setStatus("");
 }
 
@@ -368,7 +405,7 @@ window.addEventListener("langchange", () => {
   render(); setDoc(docId, dirty);
   if (!$("tabList").hidden) loadList();
   if (!$("tabAdmin").hidden) loadUsers();
-  if (me && !$("pendingView").hidden && me.status === "pending") $("pendingText").textContent = T(`${me.name || me.email} 님, 가입이 완료되었습니다. 관리자 승인 후 사용할 수 있습니다.`, `${me.name || me.email}, your registration is complete. You can use the service after administrator approval.`);
+  if (me && !$("pendingView").hidden && me.status === "pending") $("pendingText").textContent = T("이 계정은 사용 권한이 없습니다. 등록된 마케팅 계정으로 로그인하세요.", "This account doesn't have access. Please log in with the registered marketing account.");
   if (cfg && cfg.allowedDomains && cfg.allowedDomains.length) $("domainHint").textContent = T("가입 가능 이메일: @", "Allowed emails: @") + cfg.allowedDomains.join(", @");
 });
 

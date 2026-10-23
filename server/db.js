@@ -32,6 +32,12 @@ async function migrate() {
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS proposals_owner_idx ON proposals(owner_uid, updated_at DESC);
+    CREATE TABLE IF NOT EXISTS settings (
+      key         TEXT PRIMARY KEY,
+      value       JSONB NOT NULL,
+      updated_by  TEXT,
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
     CREATE TABLE IF NOT EXISTS downloads (
       id          SERIAL PRIMARY KEY,
       proposal_id INTEGER NOT NULL REFERENCES proposals(id) ON DELETE CASCADE,

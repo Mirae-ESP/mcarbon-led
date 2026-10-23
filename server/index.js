@@ -5,7 +5,7 @@ const helmet = require("helmet");
 const compression = require("compression");
 const { pool, migrate } = require("./db");
 const { MODE, ALLOWED_DOMAINS, requireUser, requireAdmin } = require("./auth");
-const { normalize, compute } = require("../public/calc.js");
+const { normalize, compute, DEFAULTS, PROPOSAL_KEYS } = require("../public/calc.js");
 const { buildExcel } = require("./excel");
 const { buildPptx } = require("./pptx");
 
@@ -48,6 +48,27 @@ app.get("/api/config", (req, res) => {
 
 app.get("/api/me", requireUser({ allowPending: true }), (req, res) => res.json(req.user));
 
+// ---------- 회사 설정 (엑셀·PPT 전용 값) ----------
+const pick = (v) => Object.fromEntries(PROPOSAL_KEYS.map((k) => [k, v[k]]));
+async function companyDefaults() {
+  const { rows } = await pool.query("SELECT value FROM settings WHERE key = 'defaults'");
+  return pick(normalize(Object.assign({}, DEFAULTS, rows[0] ? rows[0].value : {})));
+}
+// 직원은 회사 설정을 바꿀 수 없음: 새 제안서는 회사 설정, 기존 제안서는 저장된 값 유지
+function applyPolicy(user, v, base) {
+  if (user.role === "admin") return v;
+  return normalize(Object.assign({}, v, base));
+}
+app.get("/api/settings", requireUser(), wrap(async (req, res) => res.json(await companyDefaults())));
+app.put("/api/settings", requireUser(), requireAdmin, wrap(async (req, res) => {
+  const v = pick(normalize(Object.assign({}, DEFAULTS, await companyDefaults(), req.body || {})));
+  await pool.query(
+    `INSERT INTO settings (key, value, updated_by, updated_at) VALUES ('defaults', $1, $2, now())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, updated_at = now()`,
+    [v, req.user.email]);
+  res.json(v);
+}));
+
 // ---------- 제안서 ----------
 app.get("/api/proposals", requireUser(), wrap(async (req, res) => {
   const all = req.user.role === "admin" && req.query.all === "1";
@@ -65,7 +86,7 @@ app.get("/api/proposals", requireUser(), wrap(async (req, res) => {
 }));
 
 app.post("/api/proposals", requireUser(), wrap(async (req, res) => {
-  const v = normalize(req.body && req.body.inputs);
+  const v = applyPolicy(req.user, normalize(req.body && req.body.inputs), await companyDefaults());
   const { rows } = await pool.query(
     `INSERT INTO proposals (owner_uid, site, inputs, summary) VALUES ($1,$2,$3,$4) RETURNING id, site, created_at, updated_at`,
     [req.user.uid, v.site, v, summaryOf(v)]);
@@ -86,7 +107,7 @@ app.get("/api/proposals/:id", requireUser(), wrap(async (req, res) => {
 
 app.put("/api/proposals/:id", requireUser(), wrap(async (req, res) => {
   const p = await loadProposal(req, res); if (!p) return;
-  const v = normalize(req.body && req.body.inputs);
+  const v = applyPolicy(req.user, normalize(req.body && req.body.inputs), pick(normalize(p.inputs)));
   const { rows } = await pool.query(
     `UPDATE proposals SET site=$2, inputs=$3, summary=$4, updated_at=now() WHERE id=$1 RETURNING id, site, created_at, updated_at`,
     [p.id, v.site, v, summaryOf(v)]);
