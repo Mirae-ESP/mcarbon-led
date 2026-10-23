@@ -436,7 +436,7 @@ function genPw() {
 $("aGen").addEventListener("click", () => { $("aPw").value = genPw(); });
 $("fAdd").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const m = $("aMsg"), b = $("aBtn");
+  const m = $("addMsg"), b = $("aBtn");
   const name = $("aName").value.trim(), email = $("aEmail").value.trim(), password = $("aPw").value;
   if (!name) { m.textContent = TR("이름을 입력하세요."); m.className = "hint err"; return; }
   if (!validEmail(email)) { m.textContent = TR("이메일을 정확히 입력하세요."); m.className = "hint err"; return; }

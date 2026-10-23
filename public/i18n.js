@@ -290,7 +290,7 @@ const key = (s) => s.replace(/\s+/g, " ").trim();
 function trNode(n) {
   if (n.nodeType !== 3) return;
   const p = n.parentNode;
-  if (!p || /^(SCRIPT|STYLE|TEXTAREA|OPTION)$/.test(p.nodeName) || p.closest("[data-noi18n]")) return;
+  if (!p || /^(SCRIPT|STYLE|TEXTAREA)$/.test(p.nodeName) || p.closest("[data-noi18n]")) return;
   const k = key(n.nodeValue);
   if (!k || !(k in EN)) return;
   if (!done.has(n)) done.set(n, n.nodeValue);
