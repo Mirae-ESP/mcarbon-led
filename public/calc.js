@@ -14,6 +14,12 @@
     ef: 0.4781, efS: 0.4173, tree: 6.6, forest: 11,
     shares: [20, 20, 20, 30, 30, 40, 40, 100, 100, 100], // 년차별 아파트 비율(%)
   };
+  // INPUT_DATA.xlsx 에 고정(하드코딩)된 값 — 웹에서 묻지 않음
+  //  B14 M-Carbon 효율 180, B15 IoT 25%, B21 추가시설비 25,000, B22 회수 2, B41 LED 단가 30,000,
+  //  H4:H13 성과공유 비율, 수식 속 365일 · 1.05(5% 상승) · 8/3(교체주기 3년), PPT 각주 배출계수 0.4781
+  const FIXED = { effNew: 180, iot: 25, esc: 5, fac: 25000, facK: 2, ledP: 30000, cyc: 3, ef: 0.4781, forest: 11,
+    shares: [20, 20, 20, 30, 30, 40, 40, 100, 100, 100], to: "입주자대표회의" };
+  const EXCEL_DAYS = 365;
   // 회사 설정(관리자만 변경) — 엑셀·PPT에만 쓰이는 값
   const PROPOSAL_KEYS = ["to","effNew","iot","esc","fac","facK","ledP","cyc","ef","forest","shares"];
   const NUM_KEYS = ["w","qty","hrs","days","price","esc","effOld","effNew","iot","fac","facK","ledP","cyc","ef","efS","tree","forest"];
@@ -37,6 +43,8 @@
     }
     const sh = Array.isArray(raw.shares) ? raw.shares : DEFAULTS.shares;
     v.shares = Array.from({ length: 10 }, (_, i) => Math.min(100, Math.max(0, toNum(sh[i] ?? 0))));
+    // 엑셀 고정값은 항상 원본 값으로
+    Object.assign(v, FIXED, { shares: FIXED.shares.slice() });
     return v;
   }
 
@@ -44,7 +52,7 @@
   function compute(v) {
     const r = {};
     r.dayKw = v.w * v.hrs * v.qty / 1000;
-    r.useYr = r.dayKw * v.days;
+    r.useYr = r.dayKw * EXCEL_DAYS;   // 엑셀 B7 = B6*365 (고정)
     r.costYr = r.useYr * v.price;
     r.ratio = v.effOld > 0 ? (v.effNew / v.effOld) - 1 + v.iot / 100 : 0;
     r.saveKwh = r.useYr * r.ratio;
@@ -93,5 +101,5 @@
   const f1 = (n) => n.toLocaleString("ko-KR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const man = (n) => Math.round(n / 1e4).toLocaleString("ko-KR");
 
-  return { DEFAULTS, NUM_KEYS, PROPOSAL_KEYS, PITCH_PER_HA, normalize, compute, computeScreen, josa, f0, f1, man };
+  return { DEFAULTS, FIXED, NUM_KEYS, PROPOSAL_KEYS, PITCH_PER_HA, normalize, compute, computeScreen, josa, f0, f1, man };
 });

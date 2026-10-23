@@ -172,7 +172,7 @@
     <!-- 제안서(엑셀·PPT) 설정 -->
     <section class="panel wide propset" id="propset" hidden>
       <details class="adv" id="adv">
-        <summary>제안서(엑셀·PPT) 설정 <small>파일에만 쓰이는 값 · 보통은 바꿀 필요 없음</small></summary>
+        <summary>제안서(엑셀·PPT) 결과 <small>INPUT_DATA 엑셀 수식과 고정값으로 자동 계산 · 입력 없음</small></summary>
         <div class="adv-body">
           <div class="prop-sum">
             <div class="big">
@@ -183,45 +183,15 @@
             <div class="prop-kpi">
               <div class="calc"><span>에너지 Saving Ratio (엑셀 수식)</span><b id="pRatio">–</b></div>
               <div class="calc"><span>연간 절감 전력 (제안서)</span><b id="pKwh">–</b></div>
+              <div class="calc"><span>제안사 투자비 (제품·시설)</span><b id="cInv">–</b></div>
+              <div class="calc"><span>건물주 추가투자비용 절감액</span><b id="cRep">–</b></div>
               <div class="calc"><span>계약기간</span><b id="gYrs">–</b></div>
               <p class="warn" id="pWarn" hidden>Saving Ratio가 100%를 넘습니다. 실제 사용량보다 많이 절감되는 것으로 계산되니 광효율·Smart IoT 값을 확인하세요.</p>
             </div>
           </div>
+          <p class="hint fixed-note">엑셀 고정값: M-Carbon 등 효율 180 lm/W · Smart IoT 추가 절감 25% · 전기요금 연 5% 상승 · 연간 운전일수 365일 · 추가시설비 25,000원 · 회수 계수 2 · LED 평균단가 30,000원 · 교체주기 3년 · 배출계수 0.4781 tCO₂eq/MWh</p>
 
-          <div class="adv-grid">
-            <div>
-              <div class="group-title first">제안서 표지</div>
-              <div class="two">
-                <div class="field"><label for="to">수신</label><div class="box"><input id="to" value="입주자대표회의"></div></div>
-              </div>
-              <div class="group-title">절감율 산출</div>
-              <div class="two">
-                <div class="field"><label for="effNew">M-Carbon 등 효율</label><div class="box"><input id="effNew" inputmode="decimal" value="180"><span class="u">lm/W</span></div></div>
-                <div class="field"><label for="iot">Smart IoT 추가 절감</label><div class="box"><input id="iot" inputmode="decimal" value="25"><span class="u">%</span></div></div>
-                <div class="field"><label for="esc">요금 연 상승률</label><div class="box"><input id="esc" inputmode="decimal" value="5"><span class="u">%</span></div></div>
-              </div>
-            </div>
-            <div>
-              <div class="group-title first">투자비 · 교체비용</div>
-              <div class="two">
-                <div class="field"><label for="fac">추가시설비 단가</label><div class="box"><input id="fac" inputmode="numeric" value="25,000"><span class="u">원/등</span></div></div>
-                <div class="field"><label for="facK">회수 계수 (10년 기준)</label><div class="box"><input id="facK" inputmode="decimal" value="2"><span class="u">배</span></div></div>
-                <div class="field"><label for="ledP">LED 평균단가 (제품+시설)</label><div class="box"><input id="ledP" inputmode="numeric" value="30,000"><span class="u">원/등</span></div></div>
-                <div class="field"><label for="cyc">기존 조명 교체주기</label><div class="box"><input id="cyc" inputmode="decimal" value="3"><span class="u">년</span></div></div>
-              </div>
-              <div class="calc"><span>제안사 투자비 (제품·시설)</span><b id="cInv">–</b></div>
-              <div class="calc"><span>건물주 추가투자비용 절감액</span><b id="cRep">–</b></div>
-            </div>
-            <div>
-              <div class="group-title first">PPT 환산 계수</div>
-              <div class="two">
-                <div class="field"><label for="ef">전력 배출계수 (PPT)</label><div class="box"><input id="ef" inputmode="decimal" value="0.4781"><span class="u">tCO₂eq/MWh</span></div></div>
-                <div class="field"><label for="forest">소나무 숲 1ha 흡수량</label><div class="box"><input id="forest" inputmode="decimal" value="11"><span class="u">t/년</span></div></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="group-title">성과공유 비율</div>
+          <div class="group-title">성과공유 비율 (고정)</div>
           <div class="tablewrap2">
           <table>
             <thead><tr><th>년차</th><th>아파트 비율</th><th>전기요금 절감액</th><th>아파트 수익</th><th>제안사 수익</th><th>아파트 누적</th></tr></thead>

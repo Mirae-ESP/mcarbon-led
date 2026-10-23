@@ -2,10 +2,12 @@
 (() => {
 "use strict";
 const $ = (id) => document.getElementById(id);
-const { DEFAULTS, NUM_KEYS, PROPOSAL_KEYS, normalize, compute, computeScreen, f0, f1, man } = window.LEDCalc;
+const { DEFAULTS, PROPOSAL_KEYS, normalize, compute, computeScreen, f0, f1, man } = window.LEDCalc;
 let CO = null; // 회사 설정 (서버)
 const isAdmin = () => !!(me && me.role === "admin");
-const TEXT_KEYS = ["site", "to", "date", "author"];
+const TEXT_KEYS = ["site", "date", "author"];
+// 화면에 있는 숫자 입력칸만 (수신·숲 흡수량은 원본 PPT 고정값이라 입력 없음)
+const NUM_KEYS = window.LEDCalc.NUM_KEYS.filter((k) => document.getElementById(k));
 const T = (ko, en) => window.I18N.t(ko, en), TR = (x) => window.I18N.tr(x);
 const money = (n) => window.I18N.lang === "en" ? `${(n / 1e6).toLocaleString("en-US", { maximumFractionDigits: 1 })}<small>M KRW</small>` : `${man(n)}<small>만원</small>`;
 const moneyTxt = (n) => window.I18N.lang === "en" ? `₩${(n / 1e6).toLocaleString("en-US", { maximumFractionDigits: 1 })}M` : `${man(n)}만 원`;
@@ -174,7 +176,7 @@ function unlock() {
   $("propset").hidden = !admin;
   api("/api/settings").then((c) => {
     CO = c;
-    if (!docId && !dirty) { applyProposal(CO); render(); $("adv").open = false; }
+
   }).catch(() => {});
 }
 
@@ -184,29 +186,25 @@ function unlock() {
 let docId = null, dirty = false;
 
 function buildTable() {
-  $("tb").innerHTML = DEFAULTS.shares.map((s, i) => `<tr><td>${i + 1}년차</td><td><span class="pin"><input aria-label="${i + 1}년차 아파트 비율" inputmode="decimal" value="${s}">%</span><span class="bar2"><i></i></span></td><td></td><td></td><td></td><td></td></tr>`).join("");
-  $("tb").querySelectorAll("input").forEach((i) => i.addEventListener("input", onEdit));
+  $("tb").innerHTML = window.LEDCalc.FIXED.shares.map((s, i) => `<tr><td>${i + 1}년차</td><td>${s}%<span class="bar2"><i style="width:${s}%"></i></span></td><td></td><td></td><td></td><td></td></tr>`).join("");
 }
 function today() { const d = new Date(); return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`; }
 function readInputs() {
   const raw = {};
   TEXT_KEYS.concat(NUM_KEYS).forEach((k) => (raw[k] = $(k).value));
-  raw.shares = [...$("tb").querySelectorAll("input")].map((i) => i.value);
   return normalize(raw);
 }
 function fillInputs(v) {
   TEXT_KEYS.forEach((k) => ($(k).value = v[k] ?? ""));
   NUM_KEYS.forEach((k) => ($(k).value = v[k] === "" || v[k] == null ? "" : ["qty", "fac", "ledP"].includes(k) ? f0(v[k]) : v[k]));
-  $("tb").querySelectorAll("input").forEach((i, n) => (i.value = v.shares[n]));
   // 기본값과 다른 고급 설정이 있으면 펼쳐서 보이게
-  const base = CO || DEFAULTS;
-  $("adv").open = ADV_KEYS.some((k) => Number(v[k]) !== Number(base[k])) || v.shares.some((x, n) => Number(x) !== Number(base.shares[n]));
   render();
 }
 const REQ_KEYS = ["site", "w", "effOld", "qty", "hrs", "days", "price"];
 const SCREEN_KEYS = ["w", "effOld", "qty", "hrs", "days", "price", "efS", "tree"];
 const filled = (k) => $(k).value.trim() !== "";
-const ADV_KEYS = ["effNew", "iot", "esc", "fac", "facK", "ledP", "cyc", "ef", "forest"];
+const blankDoc = () => Object.assign(Object.fromEntries(NUM_KEYS.map((k) => [k, ""])), { site: "", to: "", date: today(), author: "", shares: Array(10).fill("") });
+const ADV_KEYS = []; // 엑셀 고정값은 묻지 않음
 function setDoc(id, isDirty) {
   docId = id; dirty = isDirty;
   $("docState").textContent = id ? T(`저장된 제안서 #${id}${isDirty ? " · 수정됨 (저장 전)" : ""}`, `Saved proposal #${id}${isDirty ? " · edited (not saved)" : ""}`) : "새 제안서 (저장 전)";
@@ -221,14 +219,13 @@ function render() {
   // 필수 칸이 비어 있으면 결과를 "–" 로
   const ready = REQ_KEYS.filter((k) => k !== "site").every(filled);
   REQ_KEYS.forEach((k) => { if (filled(k)) { const el = $(k); (el.closest(".box") || el).classList.remove("missing"); } });
-  if (REQ_KEYS.every(filled)) $("xMiss").hidden = true;
   if (!ready) {
     ["e1","e10","m1","m10","c1","c10","t1","t10","costOld","costOldM","useOld","useNew","cutPct","yrSub","bigN","bigS","pRatio","pKwh","cInv","cRep","fT","fA","fO"].forEach((id) => ($(id).textContent = "–"));
     $("gPct").textContent = "–"; $("gNew").textContent = "–"; $("gArc").style.strokeDashoffset = "314.16";
     $("barOld").style.width = "0%"; $("barNew").style.width = "0%"; $("yrChart").innerHTML = "";
     $("pWarn").hidden = true; $("xWarn").hidden = true; $("xWarnS").hidden = true;
     [...$("tb").rows].forEach((tr) => { for (let c = 2; c < 6; c++) tr.cells[c].textContent = "–"; });
-    $("gYrs").textContent = T(r.contract + "년", r.contract + " years");
+    $("gYrs").textContent = "–";
     return;
   }
   // 환산 계수가 비어 있으면 CO₂·소나무만 "–"
@@ -271,6 +268,7 @@ function render() {
   $("yrSub").textContent = T(`연간 ${m1}백만원 × 10년 = 누적 ${m10}백만원`, `₩${m1}M per year × 10 years = ₩${m10}M total`);
 
   // ---------- 제안서(엑셀·PPT) 기준 ----------
+  if (REQ_KEYS.every(filled)) $("xMiss").hidden = true;
   $("bigN").textContent = T(`총 ${f0(r.netTot)}원 (약 ${man(r.netTot)}만 원)`, `Total ₩${f0(r.netTot)} (≈ ${moneyTxt(r.netTot)})`);
   $("bigS").textContent = T(`전기 절감 배분수익 ${man(r.aptTot)}만 원 + 자체 시설교체 추가투자 비용 절감액 ${man(r.rep)}만 원`, `Share of electricity savings ${moneyTxt(r.aptTot)} + avoided replacement investment ${moneyTxt(r.rep)}`);
   $("pRatio").textContent = f1(r.ratio * 100) + "%";
@@ -291,7 +289,7 @@ function render() {
 function setStatus(t, err) { const s = $("status"); s.textContent = t; s.className = err ? "err" : ""; }
 function checkRequired() {
   const miss = REQ_KEYS.filter((k) => !filled(k));
-  REQ_KEYS.forEach((k) => { const el = $(k), box = el.closest(".box") || el; box.classList.toggle("missing", miss.includes(k)); });
+  REQ_KEYS.forEach((k) => { const el = $(k); (el.closest(".box") || el).classList.toggle("missing", !filled(k)); });
   $("xMiss").hidden = miss.length === 0;
   if (miss.length) { $(miss[0]).focus(); const e = new Error(window.I18N.tr("빈 칸을 모두 채워주세요.")); e.missing = true; throw e; }
 }
@@ -323,18 +321,13 @@ async function run(btn, label, fn) {
 $("bSave").addEventListener("click", (e) => run(e.currentTarget, "저장 중…", async () => { await save(); return "저장했습니다."; }));
 $("bXl").addEventListener("click", (e) => run(e.currentTarget, "엑셀 파일을 만드는 중…", async () => { const id = await save(); await download(id, "excel"); return "저장 후 엑셀 파일을 받았습니다."; }));
 $("bPp").addEventListener("click", (e) => run(e.currentTarget, "PPT 파일을 만드는 중… (10초 정도 걸릴 수 있습니다)", async () => { const id = await save(); await download(id, "pptx"); return "저장 후 PPT 파일을 받았습니다."; }));
-function applyProposal(src) {
-  ADV_KEYS.forEach((k) => ($(k).value = ["fac", "ledP"].includes(k) ? f0(src[k]) : src[k]));
-  $("to").value = src.to;
-  $("tb").querySelectorAll("input").forEach((i, n) => (i.value = src.shares[n]));
-}
 
 $("bNew").addEventListener("click", () => {
   if (dirty && !window.confirm(TR("저장하지 않은 내용이 있습니다. 새 제안서를 시작할까요?"))) return;
   newDoc();
 });
 function newDoc() {
-  fillInputs(Object.assign({}, DEFAULTS, CO || {}, Object.fromEntries(SCREEN_KEYS.map((k) => [k, ""])), { site: "", date: today(), author: "" }));
+  fillInputs(blankDoc());
   setDoc(null, false); setStatus("");
 }
 
@@ -428,9 +421,9 @@ window.addEventListener("langchange", () => {
    ========================================================= */
 buildTable();
 TEXT_KEYS.concat(NUM_KEYS).forEach((k) => $(k).addEventListener("input", onEdit));
-["qty", "fac", "ledP"].forEach((k) => $(k).addEventListener("blur", (e) => { e.target.value = f0(normalize({ [k]: e.target.value })[k]); }));
+["qty"].forEach((k) => $(k).addEventListener("blur", (e) => { e.target.value = f0(normalize({ [k]: e.target.value })[k]); }));
 window.addEventListener("beforeunload", (e) => { if (dirty && me) { e.preventDefault(); e.returnValue = ""; } });
-fillInputs(Object.assign({}, DEFAULTS, Object.fromEntries(SCREEN_KEYS.map((k) => [k, ""])), { site: "", date: today(), author: "" }));
+fillInputs(blankDoc());
 setDoc(null, false);
 
 (async () => {

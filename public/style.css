@@ -422,3 +422,4 @@ table.list td small{display:block;color:var(--muted);font-size:11px}
 .reset-adv.go{background:var(--forest-2);color:#fff;border-color:var(--forest-2)}
 .propset .badge{font-size:11px;vertical-align:middle}
 .field .box.missing,.meta input.missing{border-color:#e0775c;box-shadow:0 0 0 3px color-mix(in srgb,#e0775c 22%,transparent)}
+td .pin.missing{border-color:#e0775c;box-shadow:0 0 0 3px color-mix(in srgb,#e0775c 22%,transparent)}

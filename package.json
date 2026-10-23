@@ -4,7 +4,9 @@
   "private": true,
   "description": "M-Carbon 스마트 LED 제안서 자동 생성 서버",
   "main": "server/index.js",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node server/index.js",
     "dev": "AUTH_MODE=dev node server/index.js"
@@ -15,7 +17,7 @@
     "express": "4.21.2",
     "firebase-admin": "13.4.0",
     "helmet": "7.2.0",
-    "pg": "8.13.1",
-    "pptxgenjs": "3.12.0"
+    "jszip": "3.10.2",
+    "pg": "8.13.1"
   }
 }
