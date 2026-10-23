@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LED 제안서 자동 생성기</title>
+<link rel="icon" href="/img/brand.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="locked loading">
+<div class="auth" id="auth">
+  <div class="auth-card">
+    <div class="auth-top">
+      <div class="brandrow"><img class="b" src="/img/brand.png" alt="M-Carbon Solutions"><span class="c"><img src="/img/corp.png" alt="">미래이에스피(주)</span></div>
+      <h1 id="aTitle">로그인</h1>
+      <p>스마트 LED 제안서 자동 생성기</p>
+    </div>
+    <div class="auth-body">
+      <p class="hint" id="cfgErr" hidden></p>
+      <div class="tabs" role="tablist" id="tabs">
+        <button type="button" role="tab" aria-selected="true" data-v="login">로그인</button>
+        <button type="button" role="tab" aria-selected="false" data-v="signup">회원가입</button>
+      </div>
+      <p class="msg" id="aMsg" role="alert"></p>
+      <div id="pendingView" class="pendbox" hidden>
+        <p id="pendingText">관리자 승인을 기다리고 있습니다.</p>
+        <p class="hint" id="verifyText" hidden>가입한 이메일로 인증 메일을 보냈습니다. 메일의 링크를 누른 뒤 <b>상태 새로고침</b>을 눌러주세요.</p>
+        <div class="pend-btns"><button type="button" class="primary" id="pRefresh">상태 새로고침</button><button type="button" class="ghost" id="pResend" hidden>인증 메일 다시 보내기</button><button type="button" class="ghost" id="pLogout">로그아웃</button></div>
+      </div>
+
+      <form id="fLogin" novalidate>
+        <div class="af"><label for="lEmail">이메일</label><div class="in"><input id="lEmail" type="email" autocomplete="username" required></div></div>
+        <div class="af"><label for="lPw">비밀번호</label><div class="in"><input id="lPw" type="password" autocomplete="current-password" required><button type="button" class="eye" data-for="lPw">보기</button></div></div>
+        <div class="row"><label><input type="checkbox" id="lKeep" checked>로그인 상태 유지</label><button type="button" class="link" data-go="reset">비밀번호를 잊으셨나요?</button></div>
+        <button class="primary" type="submit">로그인</button>
+      </form>
+
+      <form id="fSignup" novalidate hidden>
+        <div class="af"><label for="sName">이름</label><div class="in"><input id="sName" autocomplete="name" required></div></div>
+        <div class="af"><label for="sEmail">이메일</label><div class="in"><input id="sEmail" type="email" autocomplete="email" required></div></div>
+        <div class="af"><label for="sPw">비밀번호 (8자 이상, 영문·숫자 포함)</label><div class="in"><input id="sPw" type="password" autocomplete="new-password" required><button type="button" class="eye" data-for="sPw">보기</button></div></div>
+        <div class="af"><label for="sPw2">비밀번호 확인</label><div class="in"><input id="sPw2" type="password" autocomplete="new-password" required></div></div>
+        <p class="hint" id="domainHint" hidden></p>
+        <button class="primary" type="submit">계정 만들기</button>
+      </form>
+
+      <form id="fReset" novalidate hidden>
+        <p class="hint" id="resetHint">가입한 이메일을 입력하면 비밀번호 재설정 링크를 보내드립니다.</p>
+        <div class="af"><label for="rEmail">이메일</label><div class="in"><input id="rEmail" type="email" autocomplete="email" required></div></div>
+        <button class="primary" type="submit" id="rBtn">재설정 링크 보내기</button>
+        <button type="button" class="link" data-go="login">← 로그인으로 돌아가기</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+<div class="sheet">
+  <header class="hero">
+    <div class="corp"><img src="/img/corp.png" alt="" width="42" height="42"><span>미래이에스피<small>(주)</small></span></div>
+    <div class="brand"><img src="/img/brand.png" alt="M-Carbon Solutions" width="160" height="80"></div>
+    <h1>스마트 LED 도입 <em>제안서</em> 자동 생성기</h1>
+    <p class="sub">현장 데이터를 입력하면 절감 산출 엑셀과 제안 PPT가 바로 만들어집니다</p>
+    <div class="meta">
+      <div><label for="site">단지 / 시설명</label><input id="site" value="고양호수마을 1단지"></div>
+      <div><label for="to">수신</label><input id="to" value="입주자대표회의"></div>
+      <div><label for="date">작성일</label><input id="date" value=""></div>
+      <div><label for="author">작성자</label><input id="author" value=""></div>
+    </div>
+  </header>
+
+  <nav class="nav" aria-label="메뉴">
+    <button type="button" data-tab="edit" aria-current="page">제안서 작성</button>
+    <button type="button" data-tab="list">제안서 목록</button>
+    <button type="button" data-tab="admin" id="navAdmin" hidden>사용자 관리</button>
+    <span class="who"><span><b id="whoName">–</b> 님<span class="badge" id="whoRole" hidden>관리자</span></span><button type="button" id="logout">로그아웃</button></span>
+  </nav>
+
+  <div id="tabEdit">
+
+  <div class="export">
+    <p><b id="xSite">–</b> · <span id="docState">새 제안서 (저장 전)</span><br><small>파일을 만들면 자동으로 저장됩니다. 노란 칸이 입력값입니다.</small></p>
+    <button class="btn ghost2" id="bNew" type="button">새 제안서</button>
+    <button class="btn sv" id="bSave" type="button">저장</button>
+    <button class="btn xl" id="bXl" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13l4 5M12 13l-4 5"/></svg>Excel 생성</button>
+    <button class="btn pp" id="bPp" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M12 17v4M8 21h8M8 8h4a2 2 0 0 1 0 4H8z"/></svg>PowerPoint 생성</button>
+    <p id="status" role="status" aria-live="polite"></p>
+  </div>
+
+  <main>
+    <section class="inputs panel">
+      <div class="sec-h"><h2>현장 데이터 입력</h2></div>
+
+      <div class="group-title first">기존 조명 · 운영 조건</div>
+      <div class="two">
+        <div class="field"><label for="w">소비전력 (기존 등)</label><div class="box"><input id="w" inputmode="decimal" value="32"><span class="u">W</span></div></div>
+        <div class="field"><label for="qty">LED 등수</label><div class="box"><input id="qty" inputmode="numeric" value="995"><span class="u">개</span></div></div>
+        <div class="field"><label for="hrs">일일 점등시간</label><div class="box"><input id="hrs" inputmode="decimal" value="24"><span class="u">시간</span></div></div>
+        <div class="field"><label for="days">연간 운전일수</label><div class="box"><input id="days" inputmode="numeric" value="365"><span class="u">일</span></div></div>
+        <div class="field"><label for="price">전기요금 단가</label><div class="box"><input id="price" inputmode="decimal" value="230"><span class="u">원/kWh</span></div></div>
+        <div class="field"><label for="esc">요금 연 상승률</label><div class="box"><input id="esc" inputmode="decimal" value="5"><span class="u">%</span></div></div>
+      </div>
+      <div class="calc"><span>연간 전력사용량</span><b id="cUse">–</b></div>
+      <div class="calc"><span>현재 기준 연간 전기요금</span><b id="cCost">–</b></div>
+
+      <div class="group-title">절감율 산출</div>
+      <div class="two">
+        <div class="field"><label for="effOld">현재 등 효율</label><div class="box"><input id="effOld" inputmode="decimal" value="120"><span class="u">lm/W</span></div></div>
+        <div class="field"><label for="effNew">M-Carbon 등 효율</label><div class="box"><input id="effNew" inputmode="decimal" value="180"><span class="u">lm/W</span></div></div>
+        <div class="field"><label for="iot">Smart IoT 추가 절감</label><div class="box"><input id="iot" inputmode="decimal" value="25"><span class="u">%</span></div></div>
+      </div>
+
+      <div class="group-title">투자비 · 교체비용</div>
+      <div class="two">
+        <div class="field"><label for="fac">추가시설비 단가</label><div class="box"><input id="fac" inputmode="numeric" value="25,000"><span class="u">원/등</span></div></div>
+        <div class="field"><label for="facK">회수 계수 (10년 기준)</label><div class="box"><input id="facK" inputmode="decimal" value="2"><span class="u">배</span></div></div>
+        <div class="field"><label for="ledP">LED 평균단가 (제품+시설)</label><div class="box"><input id="ledP" inputmode="numeric" value="30,000"><span class="u">원/등</span></div></div>
+        <div class="field"><label for="cyc">기존 조명 교체주기</label><div class="box"><input id="cyc" inputmode="decimal" value="3"><span class="u">년</span></div></div>
+      </div>
+      <div class="calc"><span>제안사 투자비 (제품·시설)</span><b id="cInv">–</b></div>
+      <div class="calc"><span>건물주 추가투자비용 절감액</span><b id="cRep">–</b></div>
+
+      <div class="group-title">탄소 환산 계수</div>
+      <div class="two">
+        <div class="field"><label for="ef">전력 배출계수</label><div class="box"><input id="ef" inputmode="decimal" value="0.4781"><span class="u">kgCO₂/kWh</span></div></div>
+        <div class="field"><label for="tree">소나무 1그루 흡수량</label><div class="box"><input id="tree" inputmode="decimal" value="6.6"><span class="u">kg/년</span></div></div>
+        <div class="field"><label for="forest">소나무 숲 1ha 흡수량</label><div class="box"><input id="forest" inputmode="decimal" value="11"><span class="u">t/년</span></div></div>
+      </div>
+    </section>
+
+    <aside class="rate panel" aria-label="에너지 절감율">
+      <h2 class="rate-t">절감율</h2>
+      <div class="gauge">
+        <svg viewBox="0 0 120 120"><circle class="trk" cx="60" cy="60" r="50"/><circle class="arc" id="gArc" cx="60" cy="60" r="50" stroke-dasharray="314.16" stroke-dashoffset="314.16"/></svg>
+        <div class="lbl"><div class="pct" id="gPct">–</div><div class="sm">Saving Ratio</div></div>
+      </div>
+      <div class="rate-w"><span>계약기간</span><b id="gYrs">–</b></div>
+    </aside>
+
+    <section class="results panel">
+      <div class="sec-h"><h2>예상 절감 효과</h2><span>1년차 · 10년 누적</span></div>
+      <div class="big">
+        <div class="l">아파트 10년 누적 순수익 (예측)</div>
+        <div class="n" id="bigN">–</div>
+        <div class="s" id="bigS">–</div>
+      </div>
+      <div class="rgrid">
+        <div class="ch lab">항목</div><div class="ch">1년차</div><div class="ch ten">10년 누적</div>
+        <div class="rh"><div class="t">전력 절감량</div><div class="d">에너지</div></div><div><div class="v" id="e1">–</div></div><div class="c10"><div class="v" id="e10">–</div></div>
+        <div class="rh"><div class="t">전기요금 절감액</div><div class="d">요금 상승 반영</div></div><div><div class="v" id="m1">–</div></div><div class="c10"><div class="v" id="m10">–</div></div>
+        <div class="rh"><div class="t">아파트 배분수익</div><div class="d">성과공유</div></div><div><div class="v" id="a1">–</div></div><div class="c10"><div class="v" id="a10">–</div></div>
+        <div class="rh"><div class="t">CO₂ 감축량</div><div class="d">탄소배출</div></div><div><div class="v" id="c1">–</div></div><div class="c10"><div class="v" id="c10">–</div></div>
+        <div class="rh"><div class="t">소나무 환산</div><div class="d">30년생 소나무</div></div><div><div class="v" id="t1">–</div></div><div class="c10"><div class="v" id="t10">–</div></div>
+      </div>
+      <div class="yr">
+        <div class="yr-h">
+          <div><div class="yr-t">년차별 아파트 수익</div><div class="yr-s" id="yrSub">–</div></div>
+          <div class="yr-u">단위: 만원</div>
+        </div>
+        <div class="yr-chart"><svg id="yrChart" viewBox="0 0 440 210" role="img" aria-label="1~10년차 아파트 배분수익 막대그래프"></svg></div>
+      </div>
+    </section>
+
+    <section class="panel wide share">
+      <div class="sec-h"><h2>성과공유 비율</h2><span>년차별 아파트(건물) 몫을 입력하세요 · 100%가 되는 해부터 계약 종료 후 단지 귀속</span></div>
+      <table>
+        <thead><tr><th>년차</th><th>아파트 비율</th><th>전기요금 절감액</th><th>아파트 수익</th><th>제안사 수익</th><th>아파트 누적</th></tr></thead>
+        <tbody id="tb"></tbody>
+        <tfoot><tr><td>합계</td><td></td><td id="fT">–</td><td id="fA">–</td><td id="fO">–</td><td></td></tr></tfoot>
+      </table>
+    </section>
+
+    <section class="notes">
+      <strong>산출 기준</strong>
+      <ul>
+        <li>Saving Ratio = (M-Carbon 등 효율 ÷ 현재 등 효율) − 1 + Smart IoT 추가 절감율 · 연간 절감 요금 = 현재 연간 전기요금 × Saving Ratio (INPUT_DATA 엑셀과 동일한 식)</li>
+        <li>2년차부터 전기요금이 매년 입력한 상승률만큼 오른다고 보고 계산하며, 년차별 절감액에 아파트 비율을 곱해 아파트 수익을 구합니다.</li>
+        <li>건물주 추가투자비용 절감액 = LED 평균단가 × 교체횟수(8년 ÷ 교체주기, 소수점 버림) × 등수. 아파트 10년 누적 순수익에 합산됩니다.</li>
+        <li>CO₂ = 연간 절감 전력 × 배출계수 · 소나무 = CO₂ ÷ 1그루 연간 흡수량 · 숲 면적 = CO₂ ÷ 1ha 흡수량 (축구장 1개 = 0.714ha)</li>
+      </ul>
+    </section>
+  </main>
+
+  </div>
+
+  <section id="tabList" class="tabpane" hidden>
+    <div class="sec-h"><h2>제안서 목록</h2><span id="listSub">저장된 제안서를 열어 수정하거나 파일을 다시 받을 수 있습니다</span></div>
+    <div class="toolbar">
+      <div class="search"><input id="q" type="search" placeholder="단지명 검색" aria-label="단지명 검색"></div>
+      <label class="chk" id="allWrap" hidden><input type="checkbox" id="allProps"> 전체 직원 제안서 보기</label>
+    </div>
+    <div class="tablewrap"><table class="list">
+      <thead><tr><th>단지명</th><th>아파트 10년 순수익</th><th>CO₂/년</th><th id="thOwner" hidden>작성자</th><th>수정일</th><th>작업</th></tr></thead>
+      <tbody id="listBody"></tbody>
+    </table></div>
+    <p class="empty" id="listEmpty" hidden>아직 저장된 제안서가 없습니다.</p>
+  </section>
+
+  <section id="tabAdmin" class="tabpane" hidden>
+    <div class="sec-h"><h2>사용자 관리</h2><span>가입한 직원을 승인하거나 사용을 중지합니다</span></div>
+    <div class="tablewrap"><table class="list">
+      <thead><tr><th>이름</th><th>이메일</th><th>상태</th><th>권한</th><th>제안서</th><th>가입일</th><th>작업</th></tr></thead>
+      <tbody id="userBody"></tbody>
+    </table></div>
+  </section>
+
+  <footer>
+    <p class="slogan">도시의 빛을 바꾸면, <em>탄소</em>가 줄어듭니다</p>
+    <p class="slogan-sub">아파트 · 상업용 건물 LED ESCO 탄소절감 플랫폼</p>
+  </footer>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-app-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-auth-compat.js"></script>
+<script src="/calc.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

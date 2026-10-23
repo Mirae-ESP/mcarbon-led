@@ -1,0 +1,22 @@
+# 회사 서버(또는 클라우드 VM)에서 DB까지 한 번에 실행: docker compose up -d
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: led
+      POSTGRES_PASSWORD: change-this-password
+      POSTGRES_DB: led
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on: [db]
+    ports:
+      - "3000:3000"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://led:change-this-password@db:5432/led
+volumes:
+  dbdata:
