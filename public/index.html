@@ -258,6 +258,17 @@
 
   <section id="tabAdmin" class="tabpane" hidden>
     <div class="sec-h"><h2>사용자 관리</h2><span>가입한 직원을 승인하거나 사용을 중지합니다</span></div>
+    <form class="adduser" id="fAdd" novalidate>
+      <div class="group-title first">사용자 추가</div>
+      <div class="add-grid">
+        <div class="field"><label for="aName">이름</label><div class="box"><input id="aName" autocomplete="off"></div></div>
+        <div class="field"><label for="aEmail">이메일</label><div class="box"><input id="aEmail" type="email" autocomplete="off"></div></div>
+        <div class="field"><label for="aPw">임시 비밀번호</label><div class="box"><input id="aPw" autocomplete="off"><button type="button" class="eye gen" id="aGen">자동 생성</button></div></div>
+        <div class="field"><label for="aRole">권한</label><div class="box"><select id="aRole"><option value="user">직원</option><option value="admin">관리자</option></select></div></div>
+        <button class="btn sv" type="submit" id="aBtn">사용자 추가</button>
+      </div>
+      <p class="hint" id="aMsg" aria-live="polite"></p>
+    </form>
     <div class="tablewrap"><table class="list">
       <thead><tr><th>이름</th><th>이메일</th><th>상태</th><th>권한</th><th>제안서 수</th><th>가입일</th><th>작업</th></tr></thead>
       <tbody id="userBody"></tbody>

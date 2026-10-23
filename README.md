@@ -36,6 +36,7 @@
    | `FIREBASE_PROJECT_ID` | Firebase 프로젝트 ID |
    | `FIREBASE_WEB_CONFIG` | firebaseConfig를 한 줄 JSON으로 `{"apiKey":"…","authDomain":"…","projectId":"…","appId":"…"}` |
    | `ADMIN_EMAILS` | 관리자 이메일 (쉼표로 여러 명) |
+   | `FIREBASE_SERVICE_ACCOUNT` | (사용자 추가 기능용) Firebase 서비스 계정 키 JSON — 아래 참고 |
    | `ALLOWED_DOMAINS` | (선택) 예: `mirae-esp.com` — 회사 메일만 허용 |
    | `AUTO_APPROVE_DOMAINS` | (선택) 예: `mirae-esp.com` — 이메일 인증한 회사 직원은 승인 없이 사용 |
 
@@ -47,6 +48,15 @@
 1. `ADMIN_EMAILS` 에 넣은 이메일로 **회원가입**
 2. 받은 **인증 메일의 링크**를 누른 뒤 화면에서 **상태 새로고침** → 관리자 권한으로 시작
 3. 직원이 가입하면 **사용자 관리** 탭에 "승인 대기"로 표시 → **승인** 클릭
+
+### 사용자 직접 추가 (관리자)
+
+사용자 관리 탭의 **사용자 추가** 로 이름·이메일·임시 비밀번호를 입력하면 바로 승인된 계정이 만들어집니다.
+이 기능은 서버가 Firebase 계정을 만들어야 하므로 서비스 계정 키가 필요합니다.
+
+1. Firebase 콘솔 → 프로젝트 설정(톱니바퀴) → **서비스 계정** 탭 → **새 비공개 키 생성** → JSON 파일 다운로드
+2. 파일을 메모장으로 열어 내용 전체를 복사 → 서버 환경변수 `FIREBASE_SERVICE_ACCOUNT` 에 붙여넣기
+3. 이 키는 비밀번호와 같습니다. 이메일·메신저·GitHub 에 올리지 마세요.
 
 ## 4. 회사 서버 / 다른 클라우드에서 실행
 

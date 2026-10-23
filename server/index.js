@@ -4,7 +4,7 @@ const express = require("express");
 const helmet = require("helmet");
 const compression = require("compression");
 const { pool, migrate } = require("./db");
-const { MODE, ALLOWED_DOMAINS, requireUser, requireAdmin } = require("./auth");
+const { MODE, ALLOWED_DOMAINS, requireUser, requireAdmin, createLogin } = require("./auth");
 const { normalize, compute, DEFAULTS, PROPOSAL_KEYS } = require("../public/calc.js");
 const { buildExcel } = require("./excel");
 const { buildPptx } = require("./pptx");
@@ -152,6 +152,27 @@ app.get("/api/admin/users", requireUser(), requireAdmin, wrap(async (req, res) =
        FROM users u ORDER BY (u.status = 'pending') DESC, u.created_at DESC`);
   res.json(rows);
 }));
+// 관리자가 사용자 직접 추가 (바로 승인된 상태로 생성)
+app.post("/api/admin/users", requireUser(), requireAdmin, wrap(async (req, res) => {
+  const b = req.body || {};
+  const email = String(b.email || "").trim().toLowerCase(), name = String(b.name || "").trim().slice(0, 40);
+  const password = String(b.password || ""), role = b.role === "admin" ? "admin" : "user";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "bad_email", message: "이메일 형식이 올바르지 않습니다." });
+  if (!name) return res.status(400).json({ error: "bad_name", message: "이름을 입력하세요." });
+  if (password.length < 8 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password))
+    return res.status(400).json({ error: "weak_password", message: "비밀번호는 8자 이상이며 영문과 숫자를 모두 포함해야 합니다." });
+  if (ALLOWED_DOMAINS.length && !ALLOWED_DOMAINS.includes(email.split("@")[1]))
+    return res.status(400).json({ error: "domain_not_allowed", message: "허용된 회사 이메일만 사용할 수 있습니다." });
+  let created;
+  try { created = await createLogin({ email, name, password }); }
+  catch (e) { return res.status(400).json({ error: e.code || "create_failed", message: e.message }); }
+  const { rows } = await pool.query(
+    `INSERT INTO users (uid, email, name, role, status) VALUES ($1,$2,$3,$4,'active')
+     ON CONFLICT (uid) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, status = 'active'
+     RETURNING uid, email, name, role, status`, [created.uid, email, name, role]);
+  res.status(201).json({ ...rows[0], existed: created.existed });
+}));
+
 app.patch("/api/admin/users/:uid", requireUser(), requireAdmin, wrap(async (req, res) => {
   const { status, role } = req.body || {};
   if (req.params.uid === req.user.uid) return res.status(400).json({ error: "self", message: "본인 계정은 변경할 수 없습니다." });

@@ -7,7 +7,7 @@
 const fs = require("fs");
 const path = require("path");
 const JSZip = require("jszip");
-const { compute, josa, f0, f1, man } = require("../public/calc.js");
+const { compute, computeScreen, josa, f0, f1, man } = require("../public/calc.js");
 
 const TEMPLATE = fs.readFileSync(path.join(__dirname, "assets", "template.pptx"));
 const PX_PT = (13.333 * 72) / 1376; // 원본 이미지 1px → pt
@@ -33,8 +33,10 @@ async function buildPptx(v) {
   const site = v.site;
 
   // 원본 표기 방식
-  const kwhR = Math.round(r.saveKwh / 1000) * 1000;              // 약 22,000
-  const co2R = Math.round(r.co2 * 10) / 10;                      // 약 10.5
+  // 탄소 패널: 화면(웹 산출서)의 연간 전력 절감량 사용, CO₂는 PPT 각주의 배출계수 0.4781 로 계산
+  const S = computeScreen(v);
+  const kwhR = Math.round(S.e / 1000) * 1000;                    // 약 22,000
+  const co2R = Math.round(S.e * v.ef / 1000 * 10) / 10;          // 약 10.5  (v.ef = 0.4781 고정)
   const co210 = Math.round(co2R * 10 * 10) / 10;                 // 약 105
   const TREE_KG = 6.6; // 원본 PPT 각주에 고정된 값 (30년생 소나무 1그루 연 6.6kg)
   const treesR = Math.floor(co2R * 1000 / TREE_KG / 10) * 10;   // 약 1,590

@@ -209,6 +209,11 @@ const EN = {
   "엑셀 고정값: Smart IoT 추가 절감 25% · 전기요금 연 5% 상승 · 연간 운전일수 365일 · 추가시설비 25,000원 · 회수 계수 2 · LED 평균단가 30,000원 · 교체주기 3년 · 배출계수 0.4781 tCO₂eq/MWh": "Fixed Excel values: Smart IoT savings 25% · electricity price +5%/yr · 365 operating days · installation ₩25,000 · recovery factor 2 · LED unit cost ₩30,000 · replacement cycle 3 yrs · emission factor 0.4781 tCO₂eq/MWh",
   "성과공유 비율 (고정)": "Profit-sharing ratios (fixed)",
   "M-Carbon 등기구": "M-Carbon fixtures",
+  "사용자 추가": "Add user",
+  "임시 비밀번호": "Temporary password",
+  "자동 생성": "Generate",
+  "서버에 FIREBASE_SERVICE_ACCOUNT 설정이 없어 사용자를 추가할 수 없습니다. (README 참고)": "The server has no FIREBASE_SERVICE_ACCOUNT setting, so users can't be added. (See README.)",
+  "비밀번호는 6자 이상이어야 합니다.": "Passwords need at least 6 characters.",
   // 안내·오류 문구
   "요청에 실패했습니다": "Request failed",
   "이메일 형식이 올바르지 않습니다.": "The email address is not valid.",

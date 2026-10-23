@@ -7,7 +7,7 @@ const ADMIN_EMAILS = list(process.env.ADMIN_EMAILS);
 const AUTO_APPROVE_DOMAINS = list(process.env.AUTO_APPROVE_DOMAINS);
 const ALLOWED_DOMAINS = list(process.env.ALLOWED_DOMAINS);
 
-let verify;
+let verify, createLogin;
 if (MODE === "dev") {
   if (process.env.NODE_ENV === "production") {
     console.error("AUTH_MODE=dev 는 운영(production)에서 사용할 수 없습니다.");
@@ -20,13 +20,34 @@ if (MODE === "dev") {
     if (!email || !email.includes("@")) throw new Error("bad dev token");
     return { uid: "dev:" + email.toLowerCase(), email: email.toLowerCase(), name: name || email.split("@")[0], email_verified: true };
   };
+  createLogin = async ({ email, name }) => ({ uid: "dev:" + email, existed: false });
 } else {
   const admin = require("firebase-admin");
   if (!process.env.FIREBASE_PROJECT_ID) {
     console.error("FIREBASE_PROJECT_ID 환경변수가 없습니다. (.env.example 참고)");
     process.exit(1);
   }
-  admin.initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID });
+  // 사용자 직접 추가(계정 생성)에는 서비스 계정 키가 필요 (FIREBASE_SERVICE_ACCOUNT, JSON 한 줄)
+  let cred = null;
+  try { cred = process.env.FIREBASE_SERVICE_ACCOUNT ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT) : null; }
+  catch (e) { console.error("FIREBASE_SERVICE_ACCOUNT 값이 올바른 JSON 이 아닙니다."); }
+  admin.initializeApp(cred ? { credential: admin.credential.cert(cred), projectId: process.env.FIREBASE_PROJECT_ID }
+                           : { projectId: process.env.FIREBASE_PROJECT_ID });
+  createLogin = async ({ email, name, password }) => {
+    if (!cred) { const e = new Error("서버에 FIREBASE_SERVICE_ACCOUNT 설정이 없어 사용자를 추가할 수 없습니다. (README 참고)"); e.code = "no_service_account"; throw e; }
+    try {
+      const u = await admin.auth().createUser({ email, password, displayName: name, emailVerified: true });
+      return { uid: u.uid, existed: false };
+    } catch (err) {
+      if (err.code === "auth/email-already-exists") {
+        const u = await admin.auth().getUserByEmail(email);       // 이미 가입한 계정이면 승인만
+        return { uid: u.uid, existed: true };
+      }
+      const e = new Error(err.code === "auth/invalid-password" ? "비밀번호는 6자 이상이어야 합니다."
+        : err.code === "auth/invalid-email" ? "이메일 형식이 올바르지 않습니다." : "계정을 만들지 못했습니다: " + err.message);
+      e.code = "create_failed"; throw e;
+    }
+  };
   verify = async (token) => {
     const d = await admin.auth().verifyIdToken(token);
     return { uid: d.uid, email: (d.email || "").toLowerCase(), name: d.name || "", email_verified: !!d.email_verified };
@@ -79,4 +100,4 @@ function requireAdmin(req, res, next) {
   res.status(403).json({ error: "admin_only", message: "관리자만 사용할 수 있습니다." });
 }
 
-module.exports = { MODE, ALLOWED_DOMAINS, requireUser, requireAdmin };
+module.exports = { MODE, ALLOWED_DOMAINS, requireUser, requireAdmin, createLogin: (...a) => createLogin(...a) };

@@ -75,7 +75,7 @@ document.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click"
   if (b.dataset.go === "reset") $("rEmail").value = $("lEmail").value;
   showAuth(b.dataset.go);
 }));
-document.querySelectorAll(".eye").forEach((b) => b.addEventListener("click", () => {
+document.querySelectorAll(".eye[data-for]").forEach((b) => b.addEventListener("click", () => {
   const i = $(b.dataset.for); const s = i.type === "password"; i.type = s ? "text" : "password"; b.textContent = s ? "숨기기" : "보기";
 }));
 const validEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
@@ -423,6 +423,35 @@ window.addEventListener("langchange", () => {
   if (!$("tabAdmin").hidden) loadUsers();
   if (me && !$("pendingView").hidden && me.status === "pending") $("pendingText").textContent = T(`${me.name || me.email} 님, 가입 신청이 접수되었습니다. 관리자 승인 후 사용할 수 있습니다.`, `${me.name || me.email}, your sign-up request was received. You can use the service after an administrator approves it.`);
   if (cfg && cfg.allowedDomains && cfg.allowedDomains.length) $("domainHint").textContent = T("가입 가능 이메일: @", "Allowed emails: @") + cfg.allowedDomains.join(", @");
+});
+
+
+/* ---------- 관리자: 사용자 직접 추가 ---------- */
+function genPw() {
+  const a = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz", d = "23456789", all = a + d;
+  const r = (s) => s[crypto.getRandomValues(new Uint32Array(1))[0] % s.length];
+  let p = r(a) + r(d); for (let i = 0; i < 8; i++) p += r(all);
+  return p.split("").sort(() => (crypto.getRandomValues(new Uint8Array(1))[0] & 1) - 0.5).join("");
+}
+$("aGen").addEventListener("click", () => { $("aPw").value = genPw(); });
+$("fAdd").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const m = $("aMsg"), b = $("aBtn");
+  const name = $("aName").value.trim(), email = $("aEmail").value.trim(), password = $("aPw").value;
+  if (!name) { m.textContent = TR("이름을 입력하세요."); m.className = "hint err"; return; }
+  if (!validEmail(email)) { m.textContent = TR("이메일을 정확히 입력하세요."); m.className = "hint err"; return; }
+  if (!strong(password)) { m.textContent = TR("비밀번호는 8자 이상이며 영문과 숫자를 모두 포함해야 합니다."); m.className = "hint err"; return; }
+  b.disabled = true;
+  try {
+    const u = await api("/api/admin/users", { method: "POST", json: { name, email, password, role: $("aRole").value } });
+    m.className = "hint ok";
+    m.textContent = u.existed
+      ? T(`${email} 은(는) 이미 가입한 계정이라 승인 처리했습니다. (비밀번호는 바뀌지 않았습니다)`, `${email} already had an account, so it was approved. (Password unchanged.)`)
+      : T(`추가했습니다. 이메일 ${email} / 임시 비밀번호 ${password} 를 전달하세요. 로그인 후 ‘비밀번호를 잊으셨나요?’로 변경할 수 있습니다.`, `Added. Give them email ${email} / temporary password ${password}. They can change it with ‘Forgot password?’ after logging in.`);
+    ["aName", "aEmail", "aPw"].forEach((id) => ($(id).value = "")); $("aRole").value = "user";
+    loadUsers();
+  } catch (err) { m.className = "hint err"; m.textContent = TR(err.message); }
+  finally { b.disabled = false; }
 });
 
 /* =========================================================
