@@ -201,6 +201,8 @@ const EN = {
   "제안서(엑셀·PPT) 기준 Saving Ratio가 100%를 넘습니다. 파일을 만들기 전에 관리자에게 확인하세요.": "The proposal (Excel · PowerPoint) Saving Ratio is over 100%. Check with your administrator before creating files.",
   "이 계정은 사용 권한이 없습니다. 등록된 마케팅 계정으로 로그인하세요.": "This account doesn't have access. Please log in with the registered marketing account.",
   "접근 권한 없음": "No access",
+  "단지명 미입력": "No complex name yet",
+  "빈 칸을 모두 채워주세요.": "Please fill in all the empty boxes.",
   // 안내·오류 문구
   "요청에 실패했습니다": "Request failed",
   "이메일 형식이 올바르지 않습니다.": "The email address is not valid.",

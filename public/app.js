@@ -176,7 +176,6 @@ function unlock() {
     CO = c;
     if (!docId && !dirty) { applyProposal(CO); render(); $("adv").open = false; }
   }).catch(() => {});
-  if (!$("author").value.trim()) { $("author").value = me.name || ""; render(); }
 }
 
 /* =========================================================
@@ -197,13 +196,16 @@ function readInputs() {
 }
 function fillInputs(v) {
   TEXT_KEYS.forEach((k) => ($(k).value = v[k] ?? ""));
-  NUM_KEYS.forEach((k) => ($(k).value = ["qty", "fac", "ledP"].includes(k) ? f0(v[k]) : v[k]));
+  NUM_KEYS.forEach((k) => ($(k).value = v[k] === "" || v[k] == null ? "" : ["qty", "fac", "ledP"].includes(k) ? f0(v[k]) : v[k]));
   $("tb").querySelectorAll("input").forEach((i, n) => (i.value = v.shares[n]));
   // 기본값과 다른 고급 설정이 있으면 펼쳐서 보이게
   const base = CO || DEFAULTS;
   $("adv").open = ADV_KEYS.some((k) => Number(v[k]) !== Number(base[k])) || v.shares.some((x, n) => Number(x) !== Number(base.shares[n]));
   render();
 }
+const REQ_KEYS = ["site", "w", "effOld", "qty", "hrs", "days", "price"];
+const SCREEN_KEYS = ["w", "effOld", "qty", "hrs", "days", "price", "efS", "tree"];
+const filled = (k) => $(k).value.trim() !== "";
 const ADV_KEYS = ["effNew", "iot", "esc", "fac", "facK", "ledP", "cyc", "ef", "forest"];
 function setDoc(id, isDirty) {
   docId = id; dirty = isDirty;
@@ -214,7 +216,23 @@ function onEdit() { render(); setDoc(docId, true); }
 function render() {
   const v = readInputs(), r = compute(v), S = computeScreen(v);
   const en = window.I18N.lang === "en";
-  $("xSite").textContent = v.site;
+  $("xSite").textContent = $("site").value.trim() || T("단지명 미입력", "No complex name yet");
+
+  // 필수 칸이 비어 있으면 결과를 "–" 로
+  const ready = REQ_KEYS.filter((k) => k !== "site").every(filled);
+  REQ_KEYS.forEach((k) => { if (filled(k)) { const el = $(k); (el.closest(".box") || el).classList.remove("missing"); } });
+  if (REQ_KEYS.every(filled)) $("xMiss").hidden = true;
+  if (!ready) {
+    ["e1","e10","m1","m10","c1","c10","t1","t10","costOld","costOldM","useOld","useNew","cutPct","yrSub","bigN","bigS","pRatio","pKwh","cInv","cRep","fT","fA","fO"].forEach((id) => ($(id).textContent = "–"));
+    $("gPct").textContent = "–"; $("gNew").textContent = "–"; $("gArc").style.strokeDashoffset = "314.16";
+    $("barOld").style.width = "0%"; $("barNew").style.width = "0%"; $("yrChart").innerHTML = "";
+    $("pWarn").hidden = true; $("xWarn").hidden = true; $("xWarnS").hidden = true;
+    [...$("tb").rows].forEach((tr) => { for (let c = 2; c < 6; c++) tr.cells[c].textContent = "–"; });
+    $("gYrs").textContent = T(r.contract + "년", r.contract + " years");
+    return;
+  }
+  // 환산 계수가 비어 있으면 CO₂·소나무만 "–"
+  const hasEf = filled("efS"), hasTree = filled("tree");
 
   // ---------- 화면 (원본 산출서 HTML 과 같은 식) ----------
   const N = (n, u) => `<span class="n">${n}</span><small>${u}</small>`;
@@ -224,8 +242,8 @@ function render() {
   const co2 = (kg) => kg >= 1000 ? N(f1(kg / 1000), "tCO₂") : N(f0(kg), "kgCO₂");
   $("e1").innerHTML = kwh(S.e); $("e10").innerHTML = kwh(S.e * 10);
   $("m1").innerHTML = won(S.m); $("m10").innerHTML = won(S.m * 10);
-  $("c1").innerHTML = co2(S.c); $("c10").innerHTML = co2(S.c * 10);
-  $("t1").innerHTML = N(f0(S.t), "그루"); $("t10").innerHTML = N(f0(S.t * 10), "그루");
+  if (hasEf) { $("c1").innerHTML = co2(S.c); $("c10").innerHTML = co2(S.c * 10); } else { $("c1").textContent = "–"; $("c10").textContent = "–"; }
+  if (hasEf && hasTree) { $("t1").innerHTML = N(f0(S.t), "그루"); $("t10").innerHTML = N(f0(S.t * 10), "그루"); } else { $("t1").textContent = "–"; $("t10").textContent = "–"; }
   $("costOld").textContent = T(f0(S.costOld) + "원", "₩" + f0(S.costOld));
   $("costOldM").textContent = T(`월 평균 ${f0(S.costOld / 12)}원`, `Monthly avg ₩${f0(S.costOld / 12)}`);
   $("useOld").textContent = f0(S.useOld) + T(" kWh/년", " kWh/yr"); $("useNew").textContent = f0(S.useNew) + T(" kWh/년", " kWh/yr");
@@ -271,7 +289,14 @@ function render() {
 }
 
 function setStatus(t, err) { const s = $("status"); s.textContent = t; s.className = err ? "err" : ""; }
+function checkRequired() {
+  const miss = REQ_KEYS.filter((k) => !filled(k));
+  REQ_KEYS.forEach((k) => { const el = $(k), box = el.closest(".box") || el; box.classList.toggle("missing", miss.includes(k)); });
+  $("xMiss").hidden = miss.length === 0;
+  if (miss.length) { $(miss[0]).focus(); const e = new Error(window.I18N.tr("빈 칸을 모두 채워주세요.")); e.missing = true; throw e; }
+}
 async function save() {
+  checkRequired();
   const inputs = readInputs();
   const row = docId ? await api(`/api/proposals/${docId}`, { method: "PUT", json: { inputs } })
                     : await api("/api/proposals", { method: "POST", json: { inputs } });
@@ -292,7 +317,7 @@ async function download(id, kind) {
 async function run(btn, label, fn) {
   btn.disabled = true; setStatus(label);
   try { const t = await fn(); setStatus(t || "완료되었습니다."); }
-  catch (e) { console.error(e); setStatus(e.message || String(e), true); }
+  catch (e) { if (e.missing) { setStatus(""); return; } console.error(e); setStatus(e.message || String(e), true); }
   finally { btn.disabled = false; }
 }
 $("bSave").addEventListener("click", (e) => run(e.currentTarget, "저장 중…", async () => { await save(); return "저장했습니다."; }));
@@ -303,24 +328,13 @@ function applyProposal(src) {
   $("to").value = src.to;
   $("tb").querySelectorAll("input").forEach((i, n) => (i.value = src.shares[n]));
 }
-function proposalValues() { const v = readInputs(); return Object.fromEntries(PROPOSAL_KEYS.map((k) => [k, v[k]])); }
-$("resetAdv").addEventListener("click", () => { applyProposal(CO || DEFAULTS); onEdit(); });
-$("resetXl").addEventListener("click", () => { applyProposal(DEFAULTS); onEdit(); });
-$("saveCo").addEventListener("click", async (e) => {
-  const b = e.currentTarget; b.disabled = true;
-  try {
-    CO = await api("/api/settings", { method: "PUT", json: proposalValues() });
-    $("coMsg").textContent = T("기본값을 저장했습니다. 다음 새 제안서부터 적용됩니다.", "Defaults saved. They apply to new proposals from now on.");
-  } catch (err) { $("coMsg").textContent = TR(err.message); }
-  finally { b.disabled = false; }
-});
 
 $("bNew").addEventListener("click", () => {
   if (dirty && !window.confirm(TR("저장하지 않은 내용이 있습니다. 새 제안서를 시작할까요?"))) return;
   newDoc();
 });
 function newDoc() {
-  fillInputs(Object.assign({}, DEFAULTS, CO || {}, { site: "", date: today(), author: (me && me.name) || "" }));
+  fillInputs(Object.assign({}, DEFAULTS, CO || {}, Object.fromEntries(SCREEN_KEYS.map((k) => [k, ""])), { site: "", date: today(), author: "" }));
   setDoc(null, false); setStatus("");
 }
 
@@ -416,7 +430,7 @@ buildTable();
 TEXT_KEYS.concat(NUM_KEYS).forEach((k) => $(k).addEventListener("input", onEdit));
 ["qty", "fac", "ledP"].forEach((k) => $(k).addEventListener("blur", (e) => { e.target.value = f0(normalize({ [k]: e.target.value })[k]); }));
 window.addEventListener("beforeunload", (e) => { if (dirty && me) { e.preventDefault(); e.returnValue = ""; } });
-fillInputs(Object.assign({}, DEFAULTS, { date: today() }));
+fillInputs(Object.assign({}, DEFAULTS, Object.fromEntries(SCREEN_KEYS.map((k) => [k, ""])), { site: "", date: today(), author: "" }));
 setDoc(null, false);
 
 (async () => {
