@@ -4,7 +4,7 @@
   if (typeof module === "object" && module.exports) module.exports = factory();
   else root.LEDCalc = factory();
 })(typeof self !== "undefined" ? self : this, function () {
-  const PITCH_HA = 0.714; // 축구장 1개 (105m × 68m)
+  const PITCH_PER_HA = 1.3; // 원본 제안서 기준: 1ha ≈ 축구장 1.3개
 
   const DEFAULTS = {
     site: "고양호수마을 1단지", to: "입주자대표회의", date: "", author: "",
@@ -64,7 +64,7 @@
     r.co2 = r.saveKwh * v.ef / 1000;
     r.trees = v.tree > 0 ? r.co2 * 1000 / v.tree : 0;
     r.ha = v.forest > 0 ? r.co2 / v.forest : 0;
-    r.pitch = r.ha / PITCH_HA;
+    r.pitch = r.ha * PITCH_PER_HA;
     return r;
   }
 
@@ -80,5 +80,5 @@
   const f1 = (n) => n.toLocaleString("ko-KR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const man = (n) => Math.round(n / 1e4).toLocaleString("ko-KR");
 
-  return { DEFAULTS, NUM_KEYS, PITCH_HA, normalize, compute, josa, f0, f1, man };
+  return { DEFAULTS, NUM_KEYS, PITCH_PER_HA, normalize, compute, josa, f0, f1, man };
 });

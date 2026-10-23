@@ -236,3 +236,16 @@ table.list td small{display:block;color:var(--muted);font-size:11px}
 .st.disabled{background:var(--field);color:var(--muted)}
 .empty{color:var(--muted);text-align:center;padding:24px;margin:0}
 @media (max-width:520px){.tabpane{padding:18px 16px}.nav{padding:8px 10px}.nav .who{width:100%;justify-content:flex-end}}
+
+/* 다크 모드: 진한 초록 글자를 밝게 (가독성) */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .c10 .v,
+  :root:not([data-theme="light"]) .gauge .pct,
+  :root:not([data-theme="light"]) tr.after td,
+  :root:not([data-theme="light"]) .st.active,
+  :root:not([data-theme="light"]) .msg.ok,
+  :root:not([data-theme="light"]) .nav > button[aria-current="page"]{color:var(--leaf)}
+  :root:not([data-theme="light"]) .rgrid .c10{background:color-mix(in srgb,var(--leaf) 8%,var(--sheet))}
+}
+:root[data-theme="dark"] .c10 .v,:root[data-theme="dark"] .gauge .pct,:root[data-theme="dark"] tr.after td,
+:root[data-theme="dark"] .st.active,:root[data-theme="dark"] .msg.ok,:root[data-theme="dark"] .nav > button[aria-current="page"]{color:var(--leaf)}
