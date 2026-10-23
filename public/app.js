@@ -189,8 +189,12 @@ function fillInputs(v) {
   TEXT_KEYS.forEach((k) => ($(k).value = v[k] ?? ""));
   NUM_KEYS.forEach((k) => ($(k).value = ["qty", "fac", "ledP"].includes(k) ? f0(v[k]) : v[k]));
   $("tb").querySelectorAll("input").forEach((i, n) => (i.value = v.shares[n]));
+  // 기본값과 다른 고급 설정이 있으면 펼쳐서 보이게
+  $("adv").open = ADV_KEYS.some((k) => Number(v[k]) !== Number(DEFAULTS[k]));
+  $("advShare").open = v.shares.some((x, n) => Number(x) !== DEFAULTS.shares[n]);
   render();
 }
+const ADV_KEYS = ["effNew", "iot", "esc", "fac", "facK", "ledP", "cyc", "ef", "tree", "forest"];
 function setDoc(id, isDirty) {
   docId = id; dirty = isDirty;
   $("docState").textContent = id ? `저장된 제안서 #${id}${isDirty ? " · 수정됨 (저장 전)" : ""}` : "새 제안서 (저장 전)";
@@ -267,6 +271,10 @@ async function run(btn, label, fn) {
 $("bSave").addEventListener("click", (e) => run(e.currentTarget, "저장 중…", async () => { await save(); return "저장했습니다."; }));
 $("bXl").addEventListener("click", (e) => run(e.currentTarget, "엑셀 파일을 만드는 중…", async () => { const id = await save(); await download(id, "excel"); return "저장 후 엑셀 파일을 받았습니다."; }));
 $("bPp").addEventListener("click", (e) => run(e.currentTarget, "PPT 파일을 만드는 중… (10초 정도 걸릴 수 있습니다)", async () => { const id = await save(); await download(id, "pptx"); return "저장 후 PPT 파일을 받았습니다."; }));
+$("resetAdv").addEventListener("click", () => {
+  ADV_KEYS.forEach((k) => ($(k).value = ["fac", "ledP"].includes(k) ? f0(DEFAULTS[k]) : DEFAULTS[k]));
+  onEdit();
+});
 $("bNew").addEventListener("click", () => {
   if (dirty && !window.confirm("저장하지 않은 내용이 있습니다. 새 제안서를 시작할까요?")) return;
   newDoc();

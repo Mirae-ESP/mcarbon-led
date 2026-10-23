@@ -249,3 +249,17 @@ table.list td small{display:block;color:var(--muted);font-size:11px}
 }
 :root[data-theme="dark"] .c10 .v,:root[data-theme="dark"] .gauge .pct,:root[data-theme="dark"] tr.after td,
 :root[data-theme="dark"] .st.active,:root[data-theme="dark"] .msg.ok,:root[data-theme="dark"] .nav > button[aria-current="page"]{color:var(--leaf)}
+
+/* 고급 설정 (접힘) */
+.adv{margin-top:6px;border:1px solid var(--line);border-radius:10px;background:var(--field)}
+.adv > summary{cursor:pointer;list-style:none;padding:12px 14px;font:700 13px var(--f-display);color:var(--ink);display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px}
+.adv > summary::-webkit-details-marker{display:none}
+.adv > summary::before{content:"▸";color:var(--muted);transition:transform .15s}
+.adv[open] > summary::before{transform:rotate(90deg)}
+.adv > summary small{font:500 11px var(--f-body);color:var(--muted)}
+.adv > summary:focus-visible{outline:2px solid var(--leaf);outline-offset:2px;border-radius:10px}
+.adv-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px}
+.share .adv{margin-top:0;background:transparent;border:0}
+.share .adv > summary{font-size:17px;padding:0 0 4px}
+.share .adv-body{padding:10px 0 0;overflow-x:auto}
+.reset-adv{align-self:flex-start;border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:8px;padding:6px 10px;font:600 12px var(--f-body);cursor:pointer}
