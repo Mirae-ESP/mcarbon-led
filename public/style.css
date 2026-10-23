@@ -423,3 +423,4 @@ table.list td small{display:block;color:var(--muted);font-size:11px}
 .propset .badge{font-size:11px;vertical-align:middle}
 .field .box.missing,.meta input.missing{border-color:#e0775c;box-shadow:0 0 0 3px color-mix(in srgb,#e0775c 22%,transparent)}
 td .pin.missing{border-color:#e0775c;box-shadow:0 0 0 3px color-mix(in srgb,#e0775c 22%,transparent)}
+.nbadge{display:inline-block;min-width:18px;padding:0 6px;margin-left:4px;border-radius:9px;background:#c4472b;color:#fff;font:700 11px/18px var(--f-body);text-align:center}

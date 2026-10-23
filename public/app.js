@@ -58,11 +58,11 @@ const ERR = {
 const errText = (e) => ERR[e && e.code] || (e && e.message) || "알 수 없는 오류가 발생했습니다.";
 
 const forms = { login: $("fLogin"), signup: $("fSignup"), reset: $("fReset") };
-const titles = { login: "로그인", signup: "회원가입", reset: "비밀번호 찾기", pending: "접근 권한 없음" };
+const titles = { login: "로그인", signup: "회원가입", reset: "비밀번호 찾기", pending: "승인 대기" };
 function showAuth(v, keepMsg) {
   Object.entries(forms).forEach(([k, f]) => (f.hidden = k !== v));
   $("pendingView").hidden = v !== "pending";
-  $("tabs").hidden = true; // 단일 계정: 회원가입 없음
+  $("tabs").hidden = v === "reset" || v === "pending";
   $("tabs").querySelectorAll("button").forEach((b) => b.setAttribute("aria-selected", b.dataset.v === v));
   $("aTitle").textContent = titles[v];
   if (!keepMsg) amsg("");
@@ -155,7 +155,7 @@ async function refreshMe(showMsg) {
     }
     if (me.status === "active") return unlock();
     lock(); showAuth("pending", showMsg);
-    $("pendingText").textContent = T("이 계정은 사용 권한이 없습니다. 등록된 마케팅 계정으로 로그인하세요.", "This account doesn't have access. Please log in with the registered marketing account.");
+    $("pendingText").textContent = T(`${me.name || me.email} 님, 가입 신청이 접수되었습니다. 관리자 승인 후 사용할 수 있습니다.`, `${me.name || me.email}, your sign-up request was received. You can use the service after an administrator approves it.`);
     const needVerify = cfg.authMode !== "dev" && !me.email_verified;
     $("verifyText").hidden = !needVerify; $("pResend").hidden = !needVerify;
   })();
@@ -171,9 +171,10 @@ function unlock() {
   amsg("");
   $("whoName").textContent = me.name || me.email;
   const admin = me.role === "admin";
-  // 단일 계정(마케팅) 운영: 사용자 관리·권한 표시 없음, 제안서 설정은 접힌 상태로 항상 표시
-  $("whoRole").hidden = true; $("navAdmin").hidden = true; $("allWrap").hidden = true;
-  $("propset").hidden = !admin;
+  // 관리자: 사용자 관리(가입 승인) 탭 · 전체 제안서 보기
+  $("whoRole").hidden = !admin; $("navAdmin").hidden = !admin; $("allWrap").hidden = !admin;
+  $("propset").hidden = true; // 제안서 결과 패널은 표시하지 않음 (계산은 파일 생성에 그대로 사용)
+  if (admin) refreshPendingBadge();
   api("/api/settings").then((c) => {
     CO = c;
 
@@ -274,7 +275,7 @@ function render() {
   $("pRatio").textContent = f1(r.ratio * 100) + "%";
   $("pKwh").textContent = f0(r.saveKwh) + " kWh";
   $("gYrs").textContent = T(r.contract + "년", r.contract + " years");
-  $("pWarn").hidden = !(r.ratio > 1); $("xWarn").hidden = !(r.ratio > 1 && isAdmin()); $("xWarnS").hidden = !(r.ratio > 1 && !isAdmin());
+  $("pWarn").hidden = !(r.ratio > 1); $("xWarn").hidden = !(r.ratio > 1); $("xWarnS").hidden = true;
   $("cInv").textContent = T(f0(r.inv) + " 원", "₩" + f0(r.inv));
   $("cRep").textContent = T(f0(r.rep) + " 원 (" + r.repN + "회 교체)", "₩" + f0(r.rep) + " (" + r.repN + " replacements)");
   [...$("tb").rows].forEach((tr, i) => {
@@ -383,6 +384,13 @@ $("listBody").addEventListener("click", async (e) => {
 });
 
 const ST = { pending: "승인 대기", active: "사용 중", disabled: "중지됨" };
+async function refreshPendingBadge() {
+  try {
+    const rows = await api("/api/admin/users");
+    const n = rows.filter((u) => u.status === "pending").length;
+    const b = $("pendBadge"); b.textContent = n; b.hidden = n === 0;
+  } catch (e) {}
+}
 async function loadUsers() {
   let rows;
   try { rows = await api("/api/admin/users"); } catch (e) { $("userBody").innerHTML = `<tr><td colspan="7">${esc(e.message)}</td></tr>`; return; }
@@ -397,6 +405,7 @@ async function loadUsers() {
       <td><span class="st ${u.status}">${ST[u.status]}</span></td><td>${u.role === "admin" ? "관리자" : "직원"}</td>
       <td class="r">${u.proposals}</td><td>${dt(u.created_at)}</td><td><div class="acts">${acts}</div></td></tr>`;
   }).join("");
+  refreshPendingBadge();
 }
 $("userBody").addEventListener("click", async (e) => {
   const b = e.target.closest("button[data-a]"); if (!b) return;
@@ -412,7 +421,7 @@ window.addEventListener("langchange", () => {
   render(); setDoc(docId, dirty);
   if (!$("tabList").hidden) loadList();
   if (!$("tabAdmin").hidden) loadUsers();
-  if (me && !$("pendingView").hidden && me.status === "pending") $("pendingText").textContent = T("이 계정은 사용 권한이 없습니다. 등록된 마케팅 계정으로 로그인하세요.", "This account doesn't have access. Please log in with the registered marketing account.");
+  if (me && !$("pendingView").hidden && me.status === "pending") $("pendingText").textContent = T(`${me.name || me.email} 님, 가입 신청이 접수되었습니다. 관리자 승인 후 사용할 수 있습니다.`, `${me.name || me.email}, your sign-up request was received. You can use the service after an administrator approves it.`);
   if (cfg && cfg.allowedDomains && cfg.allowedDomains.length) $("domainHint").textContent = T("가입 가능 이메일: @", "Allowed emails: @") + cfg.allowedDomains.join(", @");
 });
 
