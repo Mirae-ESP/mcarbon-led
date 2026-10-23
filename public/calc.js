@@ -11,13 +11,13 @@
     w: 32, qty: 995, hrs: 24, days: 365, price: 230, esc: 5,
     effOld: 120, effNew: 180, iot: 25,
     fac: 25000, facK: 2, ledP: 30000, cyc: 3,
-    ef: 0.4781, efS: 0.4173, tree: 6.6, forest: 11,
+    ef: 0.4781, tree: 6.6, forest: 11,
     shares: [20, 20, 20, 30, 30, 40, 40, 100, 100, 100], // 년차별 아파트 비율(%)
   };
-  const NUM_KEYS = ["w","qty","hrs","days","price","esc","effOld","effNew","iot","fac","facK","ledP","cyc","ef","efS","tree","forest"];
+  const NUM_KEYS = ["w","qty","hrs","days","price","esc","effOld","effNew","iot","fac","facK","ledP","cyc","ef","tree","forest"];
   const LIMITS = { w:[0,10000], qty:[0,1e6], hrs:[0,24], days:[0,366], price:[0,10000], esc:[-50,100],
     effOld:[0,1000], effNew:[0,1000], iot:[0,100], fac:[0,1e8], facK:[0,100], ledP:[0,1e8], cyc:[0,100],
-    ef:[0,10], efS:[0,10], tree:[0,1000], forest:[0,1000] };
+    ef:[0,10], tree:[0,1000], forest:[0,1000] };
 
   const toNum = (v) => { const n = parseFloat(String(v ?? "").replace(/,/g, "")); return isFinite(n) ? n : 0; };
   const str = (v, max) => String(v ?? "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, max);
@@ -68,17 +68,6 @@
     return r;
   }
 
-  /** 화면용 산출 (원본 'LED 교체 절감효과 산출서' HTML 과 같은 식, LED 광효율 165 lm/W) */
-  const LED_EFF = 165;
-  function computeScreen(v) {
-    const base = v.qty * v.hrs * v.days / 1000;
-    const wNew = v.w * v.effOld / LED_EFF;
-    const useOld = v.w * base, useNew = wNew * base, e = Math.max(useOld - useNew, 0);
-    const m = e * v.price, c = e * v.efS, t = v.tree > 0 ? c / v.tree : 0;
-    const pct = useOld > 0 ? useNew / useOld * 100 : 0;
-    return { wNew, useOld, useNew, e, m, c, t, pct, rate: useOld > 0 ? Math.max(0, 100 - pct) : 0, costOld: useOld * v.price };
-  }
-
   // 받침 여부에 따른 조사 (이/가 등)
   function josa(word, a, b) {
     const c = String(word).trim().slice(-1), k = c.charCodeAt(0);
@@ -91,5 +80,5 @@
   const f1 = (n) => n.toLocaleString("ko-KR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const man = (n) => Math.round(n / 1e4).toLocaleString("ko-KR");
 
-  return { DEFAULTS, NUM_KEYS, PITCH_PER_HA, normalize, compute, computeScreen, josa, f0, f1, man };
+  return { DEFAULTS, NUM_KEYS, PITCH_PER_HA, normalize, compute, josa, f0, f1, man };
 });
